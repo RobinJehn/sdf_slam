@@ -1,0 +1,7 @@
+.venv*
+build/
+.vscode
+__pycache__/
+images/
+optimization_results/
+experiments/
