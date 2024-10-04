@@ -327,7 +327,10 @@ def init_map(
             for j, y_val in enumerate(y):
                 result = minimize(distance_squared, x_val, args=(x_val, y_val))
                 x_optimal = result.x[0]
-                m[i, j] = np.sqrt(distance_squared(x_optimal, x_val, y_val))
+                y_optimal = np.sin(x_optimal)
+                m[i, j] = np.sign(y_optimal - y_val) * np.sqrt(
+                    distance_squared(x_optimal, x_val, y_val)
+                )
 
     # Compute the grid spacing (dx and dy)
     dx = (x_max - x_min) / (num_x - 1)
