@@ -8,6 +8,7 @@ from utils import (
     scan_line_residuals,
     scan_point_residuals,
 )
+import argparse
 
 
 def f(x: float) -> float:
@@ -278,23 +279,79 @@ def print_guess(optimized_theta_tx_ty, true_theta_tx_ty):
     print(true_theta_tx_ty)
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Simulate and optimize laser scans.")
+    parser.add_argument(
+        "--max_nfev",
+        type=int,
+        default=30,
+        help="Maximum number of function evaluations.",
+    )
+    parser.add_argument(
+        "--num_points", type=int, default=50, help="Number of points in the scan."
+    )
+    parser.add_argument(
+        "--noise_level_degrees", type=float, default=5, help="Noise level in degrees."
+    )
+    parser.add_argument(
+        "--noise_level_translation",
+        type=float,
+        default=0.15,
+        help="Noise level in translation.",
+    )
+    parser.add_argument(
+        "--number_of_points_scan_line",
+        type=int,
+        default=10,
+        help="Number of points to consider in each scan line.",
+    )
+    parser.add_argument(
+        "--both_directions",
+        type=bool,
+        default=True,
+        help="Whether to consider both directions of the scan line.",
+    )
+    parser.add_argument(
+        "--weight_points", type=float, default=1, help="Weight for the point residuals."
+    )
+    parser.add_argument(
+        "--weight_lines", type=float, default=1, help="Weight for the line residuals."
+    )
+    parser.add_argument(
+        "--map_size_x",
+        type=int,
+        default=50,
+        help="Number of grid points along the x-axis.",
+    )
+    parser.add_argument(
+        "--map_size_y",
+        type=int,
+        default=50,
+        help="Number of grid points along the y-axis.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    max_nfev = 30
-    num_points = 50
+    args = parse_arguments()
+    max_nfev = args.max_nfev
+    num_points = args.num_points
 
     # Noise parameters
-    noise_level_degrees = 5
-    noise_level_translation = 0.15
+    noise_level_degrees = args.noise_level_degrees
+    noise_level_translation = args.noise_level_translation
 
-    number_of_points_scan_line = 10
-    both_directions = True
+    number_of_points_scan_line = args.number_of_points_scan_line
+    both_directions = args.both_directions
 
-    weight_points = 1
-    weight_lines = 1
+    weight_points = args.weight_points
+    weight_lines = args.weight_lines
 
     # Map parameters
-    map_size_x = 50
-    map_size_y = 50
+    map_size_x = args.map_size_x
+    map_size_y = args.map_size_y
+
+    #
     x_min = -1
     x_max = 2 * np.pi + 1
     y_min = -6
