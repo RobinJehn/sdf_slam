@@ -119,6 +119,7 @@ def create_scans(
 
 def objective_function(
     params,
+    initial_frame: np.ndarray,
     points: list[np.ndarray],
     dx: float,
     dy: float,
@@ -133,6 +134,7 @@ def objective_function(
     """Objective function to minimize for the optimization problem.
 
     Args:
+        initial_frame: Frame of the first scan
         params: array of parameters to optimize
         points: list of scan points
         dx: grid spacing along the x-axis
@@ -150,10 +152,11 @@ def objective_function(
     """
 
     residuals_points = weight_points * scan_point_residuals(
-        params, points, dx, dy, m_shape, x_offset, y_offset
+        params, initial_frame, points, dx, dy, m_shape, x_offset, y_offset
     )
     residuals_lines = weight_lines * scan_line_residuals(
         params,
+        initial_frame,
         points,
         dx,
         dy,
@@ -168,20 +171,20 @@ def objective_function(
 
 
 def plot_transformed_scans(
-    transformed_scan_1, transformed_scan_2, optimized_theta_tx_ty
+    transformed_scan_1, transformed_scan_2, initial_frame, optimized_theta_tx_ty
 ):
     # Now transform back to the global frame and verify if the points match
     transformed_back_scan_1 = transform_from_scanner_frame(
         transformed_scan_1,
-        optimized_theta_tx_ty[0][0],
-        optimized_theta_tx_ty[0][1],
-        optimized_theta_tx_ty[0][2],
+        initial_frame[0],
+        initial_frame[1],
+        initial_frame[2],
     )
     transformed_back_scan_2 = transform_from_scanner_frame(
         transformed_scan_2,
-        optimized_theta_tx_ty[1][0],
-        optimized_theta_tx_ty[1][1],
-        optimized_theta_tx_ty[1][2],
+        optimized_theta_tx_ty[0][0],
+        optimized_theta_tx_ty[0][1],
+        optimized_theta_tx_ty[0][2],
     )
 
     # Plot the transformed back scan points
@@ -200,10 +203,25 @@ def plot_map(
     x_max: float,
     y_min: float,
     y_max: float,
-    transformed_scan_1,
-    transformed_scan_2,
-    optimized_theta_tx_ty,
-):
+    scan_1_local: np.ndarray,
+    scan_2_local: np.ndarray,
+    initial_frame: np.ndarray,
+    optimized_theta_tx_ty: np.ndarray,
+) -> None:
+    """
+    Plot the map and the transformed scan points.
+
+    Args:
+        m: 2D map grid
+        x_min: Minimum value on the x-axis
+        x_max: Maximum value on the x-axis
+        y_min: Minimum value on the y-axis
+        y_max: Maximum value on the y-axis
+        scan_1_local: Scan points for scanner 1 in the local frame
+        scan_2_local: Scan points for scanner 2 in the local frame
+        initial_frame: Frame of the first scan
+        optimized_theta_tx_ty: Optimized parameters for scanner 2
+    """
     m_clipped = np.clip(m, -3, 3)
     plt.imshow(
         m_clipped.T,
@@ -223,24 +241,24 @@ def plot_map(
     plt.legend()
 
     # Now transform back to the global frame and verify if the points match
-    transformed_back_scan_1 = transform_from_scanner_frame(
-        transformed_scan_1,
+    scan_1_global = transform_from_scanner_frame(
+        scan_1_local,
+        initial_frame[0],
+        initial_frame[1],
+        initial_frame[2],
+    )
+    scan_2_global = transform_from_scanner_frame(
+        scan_2_local,
         optimized_theta_tx_ty[0][0],
         optimized_theta_tx_ty[0][1],
         optimized_theta_tx_ty[0][2],
     )
-    transformed_back_scan_2 = transform_from_scanner_frame(
-        transformed_scan_2,
-        optimized_theta_tx_ty[1][0],
-        optimized_theta_tx_ty[1][1],
-        optimized_theta_tx_ty[1][2],
-    )
 
     # Plot the transformed back scan points
-    for x, y in transformed_back_scan_1:
+    for x, y in scan_1_global:
         plt.scatter(x, y, color="orange", label="Transformed back 1")
 
-    for x, y in transformed_back_scan_2:
+    for x, y in scan_2_global:
         plt.scatter(x, y, color="cyan", label="Transformed back 2")
 
     plt.show()
@@ -284,7 +302,7 @@ def parse_arguments():
     parser.add_argument(
         "--max_nfev",
         type=int,
-        default=30,
+        default=15,
         help="Maximum number of function evaluations.",
     )
     parser.add_argument(
@@ -423,16 +441,6 @@ if __name__ == "__main__":
     # Add noise to the initial guess of all the parameters
     noise_level_rad = np.deg2rad(noise_level_degrees)
 
-    theta_scanner_1_initial_guess = theta_scanner_1 + np.random.normal(
-        -noise_level_rad, noise_level_rad
-    )
-    x_scanner_1_initial_guess = x_scanner_1 + np.random.normal(
-        -noise_level_translation, noise_level_translation
-    )
-    y_scanner_1_initial_guess = y_scanner_1 + np.random.normal(
-        -noise_level_translation, noise_level_translation
-    )
-
     theta_scanner_2_initial_guess = theta_scanner_2 + np.random.normal(
         -noise_level_rad, noise_level_rad
     )
@@ -443,10 +451,15 @@ if __name__ == "__main__":
         -noise_level_translation, noise_level_translation
     )
 
+    initial_frame = np.array(
+        [
+            theta_scanner_1,
+            x_scanner_1,
+            y_scanner_1,
+        ]
+    )
+
     initial_theta_tx_ty = [
-        theta_scanner_1_initial_guess,
-        x_scanner_1_initial_guess,
-        y_scanner_1_initial_guess,
         theta_scanner_2_initial_guess,
         x_scanner_2_initial_guess,
         y_scanner_2_initial_guess,
@@ -455,9 +468,6 @@ if __name__ == "__main__":
     print_guess(
         initial_theta_tx_ty,
         [
-            theta_scanner_1,
-            x_scanner_1,
-            y_scanner_1,
             theta_scanner_2,
             x_scanner_2,
             y_scanner_2,
@@ -472,7 +482,8 @@ if __name__ == "__main__":
     plot_transformed_scans(
         transformed_scan_1,
         transformed_scan_2,
-        np.array(initial_theta_tx_ty).reshape((2, 3)),
+        initial_frame,
+        np.array(initial_theta_tx_ty).reshape((1, 3)),
     )
     plot_map(
         m_initial,
@@ -482,13 +493,15 @@ if __name__ == "__main__":
         y_max,
         transformed_scan_1,
         transformed_scan_2,
-        np.array(initial_theta_tx_ty).reshape((2, 3)),
+        initial_frame,
+        np.array(initial_theta_tx_ty).reshape((1, 3)),
     )
 
     result = least_squares(
         objective_function,
         initial_params,
         args=(
+            initial_frame,
             [transformed_scan_1, transformed_scan_2],
             dx,
             dy,
@@ -506,22 +519,19 @@ if __name__ == "__main__":
     )
 
     # Extract the optimized parameters
-    optimized_theta_tx_ty = result.x[:6].reshape((2, 3))
-    optimized_map = result.x[6:].reshape(m_shape)
+    optimized_theta_tx_ty = result.x[:3].reshape((1, 3))
+    optimized_map = result.x[3:].reshape(m_shape)
 
     print_guess(
         optimized_theta_tx_ty,
         [
-            theta_scanner_1,
-            x_scanner_1,
-            y_scanner_1,
             theta_scanner_2,
             x_scanner_2,
             y_scanner_2,
         ],
     )
     plot_transformed_scans(
-        transformed_scan_1, transformed_scan_2, optimized_theta_tx_ty
+        transformed_scan_1, transformed_scan_2, initial_frame, optimized_theta_tx_ty
     )
 
     plot_map(
@@ -532,5 +542,6 @@ if __name__ == "__main__":
         y_max,
         transformed_scan_1,
         transformed_scan_2,
+        initial_frame,
         optimized_theta_tx_ty,
     )

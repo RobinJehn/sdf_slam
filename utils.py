@@ -149,6 +149,7 @@ def transform_from_scanner_frame(
 
 def scan_point_residuals(
     params: np.ndarray,
+    initial_frame: np.ndarray,
     points: list[np.ndarray],
     dx: float,
     dy: float,
@@ -160,6 +161,7 @@ def scan_point_residuals(
 
     Args:
         params: array of transformation parameters and map values
+        initial_frame: frame of the first scan
         points: list of 2D scan data points
         dx: grid spacing in the x-direction
         dy: grid spacing in the y-direction
@@ -172,9 +174,11 @@ def scan_point_residuals(
     """
     # Extract the transformation parameters (theta, tx, ty for each scan)
     num_scans = len(points)
-    scan_params = params[: num_scans * 3].reshape((num_scans, 3))
+    scan_params = params[: (num_scans - 1) * 3].reshape((num_scans - 1, 3))
+    # Prepend initial_frame to scan_params
+    scan_params = np.vstack([initial_frame, scan_params])
     # Extract map values from parameters (flattened map)
-    M = params[num_scans * 3 :].reshape(M_shape)
+    M = params[(num_scans - 1) * 3 :].reshape(M_shape)
 
     residuals = []
 
@@ -198,6 +202,7 @@ def scan_point_residuals(
 
 def scan_line_residuals(
     params: np.ndarray,
+    initial_frame: np.ndarray,
     points: list[np.ndarray],
     dx: float,
     dy: float,
@@ -212,6 +217,7 @@ def scan_line_residuals(
 
     Args:
         params: array of transformation parameters and map values
+        initial_frame: frame of the first scan
         points: list of 2D scan data points
         dx: grid spacing in the x-direction
         dy: grid spacing in the y-direction
@@ -226,9 +232,11 @@ def scan_line_residuals(
     """
     # Extract the transformation parameters (theta, tx, ty for each scan)
     num_scans = len(points)
-    scan_params = params[: num_scans * 3].reshape((num_scans, 3))
+    scan_params = params[: (num_scans - 1) * 3].reshape((num_scans - 1, 3))
+    # Prepend initial_frame to scan_params
+    scan_params = np.vstack([initial_frame, scan_params])
     # Extract map values from parameters (flattened map)
-    M = params[num_scans * 3 :].reshape(M_shape)
+    M = params[(num_scans - 1) * 3 :].reshape(M_shape)
 
     residuals = []
 
