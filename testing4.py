@@ -10,6 +10,7 @@ from utils import (
 )
 import argparse
 from pathlib import Path
+from scipy.optimize import minimize
 
 
 def f(x: float) -> float:
@@ -290,7 +291,13 @@ def plot_map(
 
 
 def init_map(
-    x_min: float, x_max: float, y_min: float, y_max: float, num_x: int, num_y: int
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
+    num_x: int,
+    num_y: int,
+    from_ground_truth: bool,
 ) -> np.ndarray:
     """
     Initialize a map with specified grid extents and resolution.
@@ -302,11 +309,25 @@ def init_map(
         y_max: Maximum value on the y-axis
         num_x: Number of grid points along the x-axis
         num_y: Number of grid points along the y-axis
+        from_ground_truth: Whether to initialize the map from the ground truth.
 
     Returns:
         m: 2D map grid initialized to zeros.
     """
     m = np.zeros((num_x, num_y))
+
+    if from_ground_truth:
+
+        def distance_squared(x, x0, y0):
+            return (x - x0) ** 2 + (np.sin(x) - y0) ** 2
+
+        x = np.linspace(x_min, x_max, num_x)
+        y = np.linspace(y_min, y_max, num_y)
+        for i, x_val in enumerate(x):
+            for j, y_val in enumerate(y):
+                result = minimize(distance_squared, x_val, args=(x_val, y_val))
+                x_optimal = result.x[0]
+                m[i, j] = np.sqrt(distance_squared(x_optimal, x_val, y_val))
 
     # Compute the grid spacing (dx and dy)
     dx = (x_max - x_min) / (num_x - 1)
@@ -371,6 +392,12 @@ def parse_arguments():
         type=int,
         default=50,
         help="Number of grid points along the y-axis.",
+    )
+    parser.add_argument(
+        "--map_from_ground_truth",
+        type=bool,
+        default=False,
+        help="Initialize the map from the ground truth.",
     )
     return parser.parse_args()
 
@@ -451,11 +478,12 @@ if __name__ == "__main__":
     # Map parameters
     map_size_x = args.map_size_x
     map_size_y = args.map_size_y
+    from_ground_truth = args.map_from_ground_truth
 
     experiment_name = (
         f"experiment_{max_nfev}_{num_points}_{noise_level_degrees}_"
         f"{noise_level_translation}_{number_of_points_scan_line}_{both_directions}_"
-        f"{weight_points}_{weight_lines}_{map_size_x}_{map_size_y}"
+        f"{weight_points}_{weight_lines}_{map_size_x}_{map_size_y}_{from_ground_truth}"
     )
     experiment_path = Path("experiments") / experiment_name
     experiment_path.mkdir(parents=True, exist_ok=True)
@@ -543,7 +571,9 @@ if __name__ == "__main__":
         ],
     )
     # Initial guess for the map
-    m_initial, dx, dy = init_map(x_min, x_max, y_min, y_max, map_size_x, map_size_y)
+    m_initial, dx, dy = init_map(
+        x_min, x_max, y_min, y_max, map_size_x, map_size_y, from_ground_truth
+    )
     m_shape = m_initial.shape
 
     initial_params = np.concatenate([initial_theta_tx_ty, m_initial.ravel()])
