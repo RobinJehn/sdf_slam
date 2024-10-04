@@ -3,7 +3,12 @@ import numpy as np
 
 ### Map helpers ###
 def bilinear_interpolation(
-    point: tuple[float, float], M: np.ndarray, dx: float, dy: float
+    point: tuple[float, float],
+    M: np.ndarray,
+    dx: float,
+    dy: float,
+    x_offset: float,
+    y_offset: float,
 ) -> float:
     """
     Perform bilinear interpolation for a given point on a 2D grid.
@@ -13,6 +18,8 @@ def bilinear_interpolation(
     M: The 2D grid of values.
     dx: The grid spacing in the x-direction.
     dy: The grid spacing in the y-direction.
+    x_offset: The x-coordinate of the grid origin.
+    y_offset: The y-coordinate of the grid origin.
 
     Returns:
         The interpolated value at the given point.
@@ -22,8 +29,8 @@ def bilinear_interpolation(
     grid_x, grid_y = M.shape
 
     # Convert point coordinates to indices
-    x_idx = (x + (grid_x * dx) / 2) / dx
-    y_idx = (y + (grid_y * dy) / 2) / dy
+    x_idx = (x - x_offset) / dx
+    y_idx = (y - y_offset) / dy
 
     # Find the integer coordinates surrounding the point
     w = int(np.floor(x_idx))
@@ -146,6 +153,8 @@ def scan_point_residuals(
     dx: float,
     dy: float,
     M_shape: tuple[int],
+    x_offset: float,
+    y_offset: float,
 ) -> np.ndarray:
     """Compute the residuals for each point in the scan data.
 
@@ -155,6 +164,8 @@ def scan_point_residuals(
         dx: grid spacing in the x-direction
         dy: grid spacing in the y-direction
         M_shape: shape of the map grid
+        x_offset: x-coordinate of the grid origin
+        y_offset: y-coordinate of the grid origin
 
     Returns:
         Array of residuals for each point in the scan data
@@ -174,7 +185,9 @@ def scan_point_residuals(
 
         # Compute residuals using bilinear interpolation on the map
         for point in scan_global:
-            interpolated_value = bilinear_interpolation(point, M, dx, dy)
+            interpolated_value = bilinear_interpolation(
+                point, M, dx, dy, x_offset, y_offset
+            )
             residual = -interpolated_value  # Observed value is zero
             residuals.append(residual)
 
@@ -189,6 +202,8 @@ def scan_line_residuals(
     dx: float,
     dy: float,
     M_shape: tuple[int],
+    x_offset: float,
+    y_offset: float,
 ):
     """Compute the residuals for each point in the scan data.
 
@@ -198,6 +213,8 @@ def scan_line_residuals(
         dx: grid spacing in the x-direction
         dy: grid spacing in the y-direction
         M_shape: shape of the map grid
+        x_offset: x-coordinate of the grid origin
+        y_offset: y-coordinate of the grid origin
 
     Returns:
         Array of residuals for each point in the scan data
@@ -210,8 +227,8 @@ def scan_line_residuals(
 
     residuals = []
 
-    step_size = 0.1
-    number_of_points = 10
+    step_size = 0.2
+    number_of_points = 30
     for i, scan in enumerate(points):
         scan_line_points = []
         distances = []
@@ -231,7 +248,9 @@ def scan_line_residuals(
 
         # Compute residuals using bilinear interpolation on the map
         for i, point_global in enumerate(scan_global):
-            interpolated_value = bilinear_interpolation(point_global, M, dx, dy)
+            interpolated_value = bilinear_interpolation(
+                point_global, M, dx, dy, x_offset, y_offset
+            )
             residual = distances[i] - interpolated_value
 
             # print(point_global, interpolated_value, distances[i], residual)
