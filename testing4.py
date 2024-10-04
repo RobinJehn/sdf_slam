@@ -210,6 +210,7 @@ def plot_scans_in_global_frame(
 
     if file_name:
         plt.savefig(file_name)
+        plt.clf()
         return
 
     plt.show()
@@ -258,7 +259,6 @@ def plot_map(
     x = np.linspace(x_min, x_max, 1000)
     y = f(x)
     plt.plot(x, y, color="red", label="f(x) = sin(x)")
-    plt.legend()
 
     # Now transform back to the global frame and verify if the points match
     scan_1_global = transform_from_scanner_frame(
@@ -283,6 +283,7 @@ def plot_map(
 
     if file_name:
         plt.savefig(file_name)
+        plt.clf()
         return
 
     plt.show()
@@ -426,6 +427,7 @@ def plot_scan_lines(
 
     if file_name:
         plt.savefig(file_name)
+        plt.clf()
         return
 
     plt.show()
