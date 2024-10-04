@@ -171,9 +171,9 @@ def objective_function(
     return residuals
 
 
-def plot_transformed_scans(
-    transformed_scan_1: np.ndarray,
-    transformed_scan_2: np.ndarray,
+def plot_scans_in_global_frame(
+    scan_1_local: np.ndarray,
+    scan_2_local: np.ndarray,
     initial_frame: np.ndarray,
     optimized_theta_tx_ty: np.ndarray,
     file_name: Path | None = None,
@@ -181,31 +181,31 @@ def plot_transformed_scans(
     """Transform the scan points to global frame and plot them.
 
     Args:
-        transformed_scan_1: Scan points for scanner 1 in the local frame
-        transformed_scan_2: Scan points for scanner 2 in the local frame
+        scan_1_local: Scan points for scanner 1 in the local frame
+        scan_2_local: Scan points for scanner 2 in the local frame
         initial_frame: Frame of the first scan
         optimized_theta_tx_ty: Optimized parameters for scanner 2
         file_name: Path to save the plot. If None, the plot is displayed.
     """
     # Now transform back to the global frame and verify if the points match
-    transformed_back_scan_1 = transform_from_scanner_frame(
-        transformed_scan_1,
+    scan_1_global = transform_from_scanner_frame(
+        scan_1_local,
         initial_frame[0],
         initial_frame[1],
         initial_frame[2],
     )
-    transformed_back_scan_2 = transform_from_scanner_frame(
-        transformed_scan_2,
+    scan_2_global = transform_from_scanner_frame(
+        scan_2_local,
         optimized_theta_tx_ty[0][0],
         optimized_theta_tx_ty[0][1],
         optimized_theta_tx_ty[0][2],
     )
 
     # Plot the transformed back scan points
-    for x, y in transformed_back_scan_1:
+    for x, y in scan_1_global:
         plt.scatter(x, y, color="orange", label="Transformed back 1")
 
-    for x, y in transformed_back_scan_2:
+    for x, y in scan_2_global:
         plt.scatter(x, y, color="cyan", label="Transformed back 2")
 
     if file_name:
@@ -532,7 +532,7 @@ if __name__ == "__main__":
 
     initial_params = np.concatenate([initial_theta_tx_ty, m_initial.ravel()])
 
-    plot_transformed_scans(
+    plot_scans_in_global_frame(
         transformed_scan_1,
         transformed_scan_2,
         initial_frame,
@@ -583,7 +583,7 @@ if __name__ == "__main__":
             y_scanner_2,
         ],
     )
-    plot_transformed_scans(
+    plot_scans_in_global_frame(
         transformed_scan_1, transformed_scan_2, initial_frame, optimized_theta_tx_ty
     )
 
