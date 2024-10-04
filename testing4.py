@@ -677,10 +677,11 @@ if __name__ == "__main__":
     np.save(experiment_path / "differences.npy", differences)
 
     # Perform statistical analysis on the differences
-    mean_diff = np.mean(differences, axis=0)
-    std_diff = np.std(differences, axis=0)
-    max_diff = np.max(differences, axis=0)
-    min_diff = np.min(differences, axis=0)
+    abs_differences = np.abs(differences)
+    mean_diff = np.mean(abs_differences, axis=0)
+    std_diff = np.std(abs_differences, axis=0)
+    max_diff = np.max(abs_differences, axis=0)
+    min_diff = np.min(abs_differences, axis=0)
 
     # Create a text file with the statistical analysis
     with open(experiment_path / "statistical_analysis.txt", "w") as f:
