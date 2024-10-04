@@ -450,6 +450,13 @@ if __name__ == "__main__":
     map_size_x = args.map_size_x
     map_size_y = args.map_size_y
 
+    experiment_name = (
+        f"experiment_{max_nfev}_{num_points}_{noise_level_degrees}_"
+        f"{noise_level_translation}_{number_of_points_scan_line}_{both_directions}_"
+        f"{weight_points}_{weight_lines}_{map_size_x}_{map_size_y}"
+    )
+    experient_path = Path("experiments") / experiment_name
+
     #
     x_min = -1
     x_max = 2 * np.pi + 1
@@ -478,7 +485,13 @@ if __name__ == "__main__":
     )
 
     plot_scan_lines(
-        x_scanner_1, y_scanner_1, scan_1, x_scanner_2, y_scanner_2, scan_2, None
+        x_scanner_1,
+        y_scanner_1,
+        scan_1,
+        x_scanner_2,
+        y_scanner_2,
+        scan_2,
+        experient_path / "scan_lines.png",
     )
 
     # Transform the scans into the frame of the respective scanner
@@ -537,6 +550,7 @@ if __name__ == "__main__":
         transformed_scan_2,
         initial_frame,
         np.array(initial_theta_tx_ty).reshape((1, 3)),
+        experient_path / "initial_alignment.png",
     )
     plot_map(
         m_initial,
@@ -548,6 +562,7 @@ if __name__ == "__main__":
         transformed_scan_2,
         initial_frame,
         np.array(initial_theta_tx_ty).reshape((1, 3)),
+        experient_path / "initial_map.png",
     )
 
     result = least_squares(
@@ -584,7 +599,11 @@ if __name__ == "__main__":
         ],
     )
     plot_scans_in_global_frame(
-        transformed_scan_1, transformed_scan_2, initial_frame, optimized_theta_tx_ty
+        transformed_scan_1,
+        transformed_scan_2,
+        initial_frame,
+        optimized_theta_tx_ty,
+        experient_path / "final_alignment.png",
     )
 
     plot_map(
@@ -597,4 +616,5 @@ if __name__ == "__main__":
         transformed_scan_2,
         initial_frame,
         optimized_theta_tx_ty,
+        experient_path / "final_map.png",
     )
