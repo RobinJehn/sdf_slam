@@ -118,18 +118,49 @@ def create_scans(
 
 def objective_function(
     params,
-    points,
-    dx,
-    dy,
-    M_shape,
+    points: list[np.ndarray],
+    dx: float,
+    dy: float,
+    m_shape: tuple[int],
     x_offset: float,
     y_offset: float,
+    number_of_points_scan_line: int,
+    both_directions: bool,
+    weight_points: float,
+    weight_lines: float,
 ):
-    residuals_points = scan_point_residuals(
-        params, points, dx, dy, M_shape, x_offset, y_offset
+    """Objective function to minimize for the optimization problem.
+
+    Args:
+        params: array of parameters to optimize
+        points: list of scan points
+        dx: grid spacing along the x-axis
+        dy: grid spacing along the y-axis
+        m_shape: shape of the map grid
+        x_offset: offset of the map along the x-axis
+        y_offset: offset of the map along the y-axis
+        number_of_points_scan_line: number of points to consider in each scan line
+        both_directions: whether to consider both directions of the scan line
+        weight_points: weight for the point residuals
+        weight_lines: weight for the line residuals
+
+    Returns:
+        Array of residuals for the optimization problem
+    """
+
+    residuals_points = weight_points * scan_point_residuals(
+        params, points, dx, dy, m_shape, x_offset, y_offset
     )
-    residuals_lines = scan_line_residuals(
-        params, points, dx, dy, M_shape, x_offset, y_offset
+    residuals_lines = weight_lines * scan_line_residuals(
+        params,
+        points,
+        dx,
+        dy,
+        m_shape,
+        x_offset,
+        y_offset,
+        number_of_points_scan_line,
+        both_directions,
     )
     residuals = np.concatenate([residuals_points, residuals_lines])
     return residuals
@@ -254,6 +285,12 @@ if __name__ == "__main__":
     # Noise parameters
     noise_level_degrees = 5
     noise_level_translation = 0.15
+
+    number_of_points_scan_line = 10
+    both_directions = True
+
+    weight_points = 1
+    weight_lines = 1
 
     # Map parameters
     map_size_x = 50
@@ -401,6 +438,10 @@ if __name__ == "__main__":
             m_shape,
             x_min,
             y_min,
+            number_of_points_scan_line,
+            both_directions,
+            weight_points,
+            weight_lines,
         ),
         verbose=2,
         max_nfev=max_nfev,

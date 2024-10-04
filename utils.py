@@ -204,7 +204,10 @@ def scan_line_residuals(
     M_shape: tuple[int],
     x_offset: float,
     y_offset: float,
-):
+    number_of_points: int,
+    both_directions: bool,
+    step_size: float = 0.2,
+) -> np.ndarray:
     """Compute the residuals for each point in the scan data.
 
     Args:
@@ -215,6 +218,8 @@ def scan_line_residuals(
         M_shape: shape of the map grid
         x_offset: x-coordinate of the grid origin
         y_offset: y-coordinate of the grid origin
+        number_of_points: number of points to consider in each scan line
+        both_directions: whether to consider both directions of the scan line
 
     Returns:
         Array of residuals for each point in the scan data
@@ -227,8 +232,9 @@ def scan_line_residuals(
 
     residuals = []
 
-    step_size = 0.2
-    number_of_points = 30
+    number_of_points_per_direction = (
+        number_of_points // 2 if both_directions else number_of_points
+    )
     for i, scan in enumerate(points):
         scan_line_points = []
         distances = []
@@ -237,11 +243,17 @@ def scan_line_residuals(
         for point in scan:
             distance_to_origin = np.linalg.norm(point)
             vector_to_origin = -point / distance_to_origin * step_size
-            for j in range(
-                1, min(number_of_points + 1, int(distance_to_origin / step_size))
-            ):
+            desired_points = min(
+                number_of_points_per_direction + 1,
+                int(distance_to_origin / step_size),
+            )
+            for j in range(1, desired_points):
                 scan_line_points.append(point + vector_to_origin * j)
                 distances.append(step_size * j)
+
+                if both_directions:
+                    scan_line_points.append(point - vector_to_origin * j)
+                    distances.append(-step_size * j)
 
         scan_line_points = np.array(scan_line_points)
         scan_global = transform_from_scanner_frame(scan_line_points, theta, tx, ty)
