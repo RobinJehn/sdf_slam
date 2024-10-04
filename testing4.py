@@ -621,3 +621,50 @@ if __name__ == "__main__":
         optimized_theta_tx_ty,
         experiment_path / "final_map.png",
     )
+
+    # Save the scans and frames to files
+    np.save(experiment_path / "scan_1.npy", scan_1)
+    np.save(experiment_path / "scan_2.npy", scan_2)
+    np.save(experiment_path / "initial_frame.npy", initial_frame)
+    np.save(experiment_path / "optimized_frame_scan_2.npy", optimized_theta_tx_ty)
+    np.save(experiment_path / "optimized_map.npy", optimized_map)
+    # Save the true frame of scan 2
+    frame_scan_2 = np.array([theta_scanner_2, x_scanner_2, y_scanner_2])
+    np.save(experiment_path / "frame_scan_2.npy", frame_scan_2)
+
+    # Calculate the difference between the actual location of the scan points and the predicted for scan 2
+    scan_2_global = transform_from_scanner_frame(
+        scan_2, theta_scanner_2, x_scanner_2, y_scanner_2
+    )
+    predicted_scan_2_global = transform_from_scanner_frame(
+        scan_2,
+        optimized_theta_tx_ty[0][0],
+        optimized_theta_tx_ty[0][1],
+        optimized_theta_tx_ty[0][2],
+    )
+
+    differences = scan_2_global - predicted_scan_2_global
+    np.save(experiment_path / "differences.npy", differences)
+
+    # Perform statistical analysis on the differences
+    mean_diff = np.mean(differences, axis=0)
+    std_diff = np.std(differences, axis=0)
+    max_diff = np.max(differences, axis=0)
+    min_diff = np.min(differences, axis=0)
+
+    # Create a text file with the statistical analysis
+    with open(experiment_path / "statistical_analysis.txt", "w") as f:
+        f.write("Statistical Analysis of Differences\n")
+        f.write("---------------------------------\n")
+        f.write(f"Mean difference: {mean_diff}\n")
+        f.write(f"Standard deviation of differences: {std_diff}\n")
+        f.write(f"Maximum difference: {max_diff}\n")
+        f.write(f"Minimum difference: {min_diff}\n")
+        f.write("---------------------------------\n")
+        f.write(f"Map resolution (dx, dy): ({dx}, {dy})\n")
+        f.write("---------------------------------\n")
+        f.write(f"True frame scan 2: {frame_scan_2}\n")
+        f.write(f"Optimized frame scan 2: {optimized_theta_tx_ty}\n")
+        f.write(
+            f"Difference between true and optimized frame scan 2: {frame_scan_2 - optimized_theta_tx_ty}\n"
+        )
