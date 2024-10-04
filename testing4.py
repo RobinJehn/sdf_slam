@@ -9,6 +9,7 @@ from utils import (
     scan_point_residuals,
 )
 import argparse
+from pathlib import Path
 
 
 def f(x: float) -> float:
@@ -171,8 +172,21 @@ def objective_function(
 
 
 def plot_transformed_scans(
-    transformed_scan_1, transformed_scan_2, initial_frame, optimized_theta_tx_ty
+    transformed_scan_1: np.ndarray,
+    transformed_scan_2: np.ndarray,
+    initial_frame: np.ndarray,
+    optimized_theta_tx_ty: np.ndarray,
+    file_name: Path | None = None,
 ):
+    """Transform the scan points to global frame and plot them.
+
+    Args:
+        transformed_scan_1: Scan points for scanner 1 in the local frame
+        transformed_scan_2: Scan points for scanner 2 in the local frame
+        initial_frame: Frame of the first scan
+        optimized_theta_tx_ty: Optimized parameters for scanner 2
+        file_name: Path to save the plot. If None, the plot is displayed.
+    """
     # Now transform back to the global frame and verify if the points match
     transformed_back_scan_1 = transform_from_scanner_frame(
         transformed_scan_1,
@@ -194,6 +208,10 @@ def plot_transformed_scans(
     for x, y in transformed_back_scan_2:
         plt.scatter(x, y, color="cyan", label="Transformed back 2")
 
+    if file_name:
+        plt.savefig(file_name)
+        return
+
     plt.show()
 
 
@@ -207,6 +225,7 @@ def plot_map(
     scan_2_local: np.ndarray,
     initial_frame: np.ndarray,
     optimized_theta_tx_ty: np.ndarray,
+    file_name: Path | None,
 ) -> None:
     """
     Plot the map and the transformed scan points.
@@ -221,6 +240,7 @@ def plot_map(
         scan_2_local: Scan points for scanner 2 in the local frame
         initial_frame: Frame of the first scan
         optimized_theta_tx_ty: Optimized parameters for scanner 2
+        file_name: Path to save the plot. If None, the plot is displayed.
     """
     m_clipped = np.clip(m, -3, 3)
     plt.imshow(
@@ -260,6 +280,10 @@ def plot_map(
 
     for x, y in scan_2_global:
         plt.scatter(x, y, color="cyan", label="Transformed back 2")
+
+    if file_name:
+        plt.savefig(file_name)
+        return
 
     plt.show()
 
@@ -350,6 +374,63 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def plot_scan_lines(
+    x_scanner_1: float,
+    y_scanner_1: float,
+    scan_1: np.ndarray,
+    x_scanner_2: float,
+    y_scanner_2: float,
+    scan_2: np.ndarray,
+    file_name: Path | None,
+):
+    """Plot the scanner locations and the scan points with the scan lines.
+
+    Args:
+        x_scanner_1: x-coordinate of scanner 1
+        y_scanner_1: y-coordinate of scanner 1
+        scan_1: Scan points for scanner 1
+        x_scanner_2: x-coordinate of scanner 2
+        y_scanner_2: y-coordinate of scanner 2
+        scan_2: Scan points for scanner 2
+        file_name: Path to save the plot. If None, the plot is displayed.
+    """
+    # Plot the locations of the scanners
+    plt.scatter(x_scanner_1, y_scanner_1, color="green", marker="x", label="Scanner 1")
+    plt.scatter(x_scanner_2, y_scanner_2, color="purple", marker="x", label="Scanner 2")
+
+    # Plot the scan points
+    for x, y in scan_1:
+        plt.scatter(x, y, color="red", label="Hits")
+
+    for x, y in scan_2:
+        plt.scatter(x, y, color="blue", label="Hits")
+
+    # Plot the scan lines
+    for x, y in scan_1:
+        plt.plot(
+            [x_scanner_1, x],
+            [y_scanner_1, y],
+            color="red",
+            linestyle="--",
+            linewidth=0.5,
+        )
+
+    for x, y in scan_2:
+        plt.plot(
+            [x_scanner_2, x],
+            [y_scanner_2, y],
+            color="blue",
+            linestyle="--",
+            linewidth=0.5,
+        )
+
+    if file_name:
+        plt.savefig(file_name)
+        return
+
+    plt.show()
+
+
 if __name__ == "__main__":
     args = parse_arguments()
     max_nfev = args.max_nfev
@@ -396,37 +477,9 @@ if __name__ == "__main__":
         num_points,
     )
 
-    # Plot the locations of the scanners
-    plt.scatter(x_scanner_1, y_scanner_1, color="green", marker="x", label="Scanner 1")
-    plt.scatter(x_scanner_2, y_scanner_2, color="purple", marker="x", label="Scanner 2")
-
-    # Plot the scan points
-    for x, y in scan_1:
-        plt.scatter(x, y, color="red", label="Hits")
-
-    for x, y in scan_2:
-        plt.scatter(x, y, color="blue", label="Hits")
-
-    # Plot the scan lines
-    for x, y in scan_1:
-        plt.plot(
-            [x_scanner_1, x],
-            [y_scanner_1, y],
-            color="red",
-            linestyle="--",
-            linewidth=0.5,
-        )
-
-    for x, y in scan_2:
-        plt.plot(
-            [x_scanner_2, x],
-            [y_scanner_2, y],
-            color="blue",
-            linestyle="--",
-            linewidth=0.5,
-        )
-
-    plt.show()
+    plot_scan_lines(
+        x_scanner_1, y_scanner_1, scan_1, x_scanner_2, y_scanner_2, scan_2, None
+    )
 
     # Transform the scans into the frame of the respective scanner
     transformed_scan_1 = transform_to_scanner_frame(
