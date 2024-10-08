@@ -19,10 +19,28 @@ float objective(
         &point_clouds);
 
 template <int Dim>
+Eigen::VectorXd scan_point_residuals(
+    const State<Dim> &state,
+    const std::vector<pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &point_clouds);
+
+template <int Dim>
+Eigen::VectorXd scan_line_residuals(
+    const State<Dim> &state,
+    const std::vector<pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &point_clouds,
+    const int number_of_points, const bool both_directions,
+    const float step_size);
+
+template <int Dim>
 Eigen::VectorXd
 objective_vec(const State<Dim> &state,
               const std::vector<pcl::PointCloud<typename std::conditional<
-                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds);
+                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
+              const int number_of_points, const bool both_directions,
+              const float step_size);
 
 // Helper function to flatten the state into a vector
 template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
@@ -61,7 +79,9 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   ObjectiveFunctor(const int num_inputs, const int num_outputs,
                    const std::array<int, Dim> &num_points,
                    const Vector &min_coords_, const Vector &max_coords_,
-                   const std::vector<pcl::PointCloud<PointType>> &point_clouds);
+                   const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+                   const int number_of_points, const bool both_directions,
+                   const float step_size);
 
   int operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const;
 
@@ -69,6 +89,11 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   const std::array<int, Dim> num_map_points_;
 
   /** Minimum and maximum values in each dimension */
-  Vector min_coords_;
-  Vector max_coords_;
+  const Vector min_coords_;
+  const Vector max_coords_;
+
+  /** Parameters for point line residuals */
+  const int number_of_points_;
+  const bool both_directions_;
+  const float step_size_;
 };
