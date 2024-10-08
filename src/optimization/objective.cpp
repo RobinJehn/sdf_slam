@@ -8,7 +8,9 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
   const int map_points = state.map_.get_num_points();
   const int num_transformations = state.transformations_.size();
 
-  Eigen::VectorXd flattened(map_points + Dim * num_transformations);
+  Eigen::VectorXd flattened(
+      map_points + Dim * num_transformations +
+      (Dim == 3 ? 3 * num_transformations : num_transformations));
 
   // Flatten the map
   int index = 0;
