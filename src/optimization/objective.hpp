@@ -66,7 +66,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   int operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const;
 
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
-  const std::array<int, Dim> &num_map_points_;
+  const std::array<int, Dim> num_map_points_;
 
   /** Minimum and maximum values in each dimension */
   Vector min_coords_;
