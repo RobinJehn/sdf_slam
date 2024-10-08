@@ -2,10 +2,11 @@
 #include "map/map.hpp"
 #include <Eigen/Dense>
 
+template <int Dim>
 struct State {
-  const Map map_;
-  const std::vector<Eigen::Affine3f> transformations_;
+  const Map<Dim> map_;
+  const std::vector<Eigen::Transform<float, Dim, Eigen::Affine>> transformations_;
 
-  State(const Map &map, const std::vector<Eigen::Affine3f> &transformations)
+  State(const Map<Dim> &map, const std::vector<Eigen::Transform<float, Dim, Eigen::Affine>> &transformations)
       : map_(map), transformations_(transformations) {}
 };

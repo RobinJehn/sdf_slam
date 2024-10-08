@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Dense>
+#include <array>
 #include <iostream>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -8,24 +9,30 @@
 #include <unsupported/Eigen/NonLinearOptimization>
 #include <unsupported/Eigen/NumericalDiff>
 
-class State;
+template <int Dim> class State;
 
+template <int Dim>
 float objective(
-    const State &state,
-    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds);
+    const State<Dim> &state,
+    const std::vector<pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &point_clouds);
 
+template <int Dim>
 Eigen::VectorXd
-objective_vec(const State &state,
-              const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds);
+objective_vec(const State<Dim> &state,
+              const std::vector<pcl::PointCloud<typename std::conditional<
+                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds);
 
 // Helper function to flatten the state into a vector
-Eigen::VectorXd flatten(const State &state);
+template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
 
 // Helper function to unflatten the state from a vector
-State unflatten(const Eigen::VectorXd &flattened_state,
-                const int num_map_points, const float min_x, const float max_x,
-                const float min_y, const float max_y, const float min_z,
-                const float max_z);
+template <int Dim>
+State<Dim> unflatten(const Eigen::VectorXd &flattened_state,
+                     const std::array<int, Dim> &num_points,
+                     const Eigen::Matrix<float, Dim, 1> &min_coords,
+                     const Eigen::Matrix<float, Dim, 1> &max_coords);
 
 // Generic functor
 template <typename _Scalar, int NX = Eigen::Dynamic, int NY = Eigen::Dynamic>
@@ -46,21 +53,22 @@ struct Functor {
   int values() const { return m_values; }
 };
 
-struct ObjectiveFunctor : Functor<double> {
-  ObjectiveFunctor(
-      const int num_inputs, const int num_outputs, const int num_map_points,
-      const float min_x, const float max_x, const float min_y,
-      const float max_y, const float min_z, const float max_z,
-      const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds);
+template <int Dim> struct ObjectiveFunctor : Functor<double> {
+  using PointType =
+      typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
+  using Vector = std::conditional_t<Dim == 2, Eigen::Vector2f, Eigen::Vector3f>;
+
+  ObjectiveFunctor(const int num_inputs, const int num_outputs,
+                   const std::array<int, Dim> &num_points,
+                   const Vector &min_coords_, const Vector &max_coords_,
+                   const std::vector<pcl::PointCloud<PointType>> &point_clouds);
 
   int operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const;
 
-  const std::vector<pcl::PointCloud<pcl::PointXYZ>> point_clouds_;
-  const int num_map_points_;
-  const float min_x_;
-  const float max_x_;
-  const float min_y_;
-  const float max_y_;
-  const float min_z_;
-  const float max_z_;
+  const std::vector<pcl::PointCloud<PointType>> point_clouds_;
+  const std::array<int, Dim> &num_map_points_;
+
+  /** Minimum and maximum values in each dimension */
+  Vector min_coords_;
+  Vector max_coords_;
 };
