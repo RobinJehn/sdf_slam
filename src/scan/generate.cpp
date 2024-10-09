@@ -71,6 +71,8 @@ pcl::PointCloud<pcl::PointXY>::Ptr
 create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
             const double angle_range, const int num_points) {
   pcl::PointCloud<pcl::PointXY>::Ptr scan(new pcl::PointCloud<pcl::PointXY>);
+
+  scan->points.reserve(num_points);
   for (int i = 0; i < num_points; ++i) {
     double angle =
         theta_scanner - angle_range / 2 + i * angle_range / (num_points - 1);
@@ -80,6 +82,10 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
     pcl_point.y = point.y();
     scan->points.push_back(pcl_point);
   }
+
+  scan->width = scan->points.size();
+  scan->height = 1;
+
   return scan;
 }
 
