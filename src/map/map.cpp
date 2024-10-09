@@ -32,12 +32,19 @@ template <int Dim>
 typename Map<Dim>::index_t
 Map<Dim>::get_grid_coordinates(const Vector &p) const {
   if constexpr (Dim == 2) {
-    return std::make_tuple(static_cast<int>(floor(p.x() / d_[0])),
-                           static_cast<int>(floor(p.y() / d_[1])));
+    auto x = static_cast<int>(floor(p.x() / d_[0]));
+    auto y = static_cast<int>(floor(p.y() / d_[1]));
+    x = std::clamp(x, 0, num_points_[0] - 1);
+    y = std::clamp(y, 0, num_points_[1] - 1);
+    return std::make_tuple(x, y);
   } else if constexpr (Dim == 3) {
-    return std::make_tuple(static_cast<int>(floor(p.x() / d_[0])),
-                           static_cast<int>(floor(p.y() / d_[1])),
-                           static_cast<int>(floor(p.z() / d_[2])));
+    auto x = static_cast<int>(floor(p.x() / d_[0]));
+    auto y = static_cast<int>(floor(p.y() / d_[1]));
+    auto z = static_cast<int>(floor(p.z() / d_[2]));
+    x = std::clamp(x, 0, num_points_[0] - 1);
+    y = std::clamp(y, 0, num_points_[1] - 1);
+    z = std::clamp(z, 0, num_points_[2] - 1);
+    return std::make_tuple(x, y, z);
   }
 }
 

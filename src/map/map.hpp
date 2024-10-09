@@ -1,14 +1,28 @@
 #pragma once
 
-#include <map>
-#include <tuple>
 #include <Eigen/Dense>
+#include <functional>
+#include <tuple>
+#include <unordered_map>
 
-template <int Dim>
-class Map {
+// Custom hash function for std::tuple
+namespace std {
+template <typename... T> struct hash<std::tuple<T...>> {
+  size_t operator()(const std::tuple<T...> &t) const {
+    return std::apply(
+        [](const auto &...args) {
+          return (... ^ std::hash<std::decay_t<decltype(args)>>{}(args));
+        },
+        t);
+  }
+};
+} // namespace std
+
+template <int Dim> class Map {
   static_assert(Dim == 2 || Dim == 3, "Dim must be 2 or 3");
 
-  using index_t = std::conditional_t<Dim == 2, std::tuple<int, int>, std::tuple<int, int, int>>;
+  using index_t = std::conditional_t<Dim == 2, std::tuple<int, int>,
+                                     std::tuple<int, int, int>>;
   using Vector = std::conditional_t<Dim == 2, Eigen::Vector2f, Eigen::Vector3f>;
 
 public:
@@ -21,7 +35,8 @@ public:
    * @param min_coords Minimum coordinates in each dimension
    * @param max_coords Maximum coordinates in each dimension
    */
-  Map(const std::array<int, Dim> &num_points, const Vector &min_coords, const Vector &max_coords);
+  Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
+      const Vector &max_coords);
 
   int get_num_points(int dim) const { return num_points_[dim]; }
 
@@ -45,7 +60,7 @@ public:
 
 private:
   /** Distance values at grid points */
-  std::map<index_t, float> grid_values_;
+  std::unordered_map<index_t, float> grid_values_;
 
   /** Size of the grid in each dimension */
   std::array<float, Dim> d_;
