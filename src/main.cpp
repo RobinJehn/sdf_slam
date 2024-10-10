@@ -1,12 +1,11 @@
 #include "map/map.hpp"
 #include "optimization/objective.hpp"
+#include "optimization/optimizer.hpp"
 #include "scan/generate.hpp"
 #include "state/state.hpp"
 #include <Eigen/Dense>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-
-#include <unsupported/Eigen/NonLinearOptimization>
 #include <unsupported/Eigen/NumericalDiff>
 
 int main(int argc, char *argv[]) {
@@ -88,17 +87,22 @@ int main(int argc, char *argv[]) {
   }
 
   // Perform the optimization using Levenberg-Marquardt algorithm
+  // Define the callback function for optimization
+  auto callback = [](const Eigen::VectorXd &x, int iter, double error) {
+    std::cout << "Iteration " << iter << ": Error = " << error << std::endl;
+  };
   Eigen::NumericalDiff<ObjectiveFunctor<2>> num_diff(functor);
-  Eigen::LevenbergMarquardt<Eigen::NumericalDiff<ObjectiveFunctor<2>>> lm(
-      num_diff);
-  lm.parameters.factor = 1.0;
-  lm.parameters.maxfev = 10;
-  lm.parameters.ftol = 1e-8;
-  lm.parameters.xtol = 1e-8;
-  lm.parameters.gtol = 1e-8;
-  lm.parameters.epsfcn = 1e-10;
+  LevenbergMarquardtWithCallback<Eigen::NumericalDiff<ObjectiveFunctor<2>>>
+      lm_wrapper(num_diff, callback);
+  lm_wrapper.lm.parameters.factor = 10.0;
+  lm_wrapper.lm.parameters.maxfev = 100 * (functor.inputs() + 1);
+  lm_wrapper.lm.parameters.ftol = 1e-8;
+  lm_wrapper.lm.parameters.xtol = 1e-8;
+  lm_wrapper.lm.parameters.gtol = 1e-8;
+  lm_wrapper.lm.parameters.epsfcn = 1e-10;
 
-  Eigen::LevenbergMarquardtSpace::Status status = lm.minimize(initial_params);
+  Eigen::LevenbergMarquardtSpace::Status status =
+      lm_wrapper.minimize(initial_params);
 
   // Extract the optimized parameters
   Eigen::MatrixXd optimized_map(map_size_x, map_size_y);

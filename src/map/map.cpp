@@ -1,5 +1,6 @@
 #include "map.hpp"
 #include "utils.hpp"
+#include <iostream>
 
 template <int Dim>
 Map<Dim>::Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
@@ -32,18 +33,40 @@ template <int Dim>
 typename Map<Dim>::index_t
 Map<Dim>::get_grid_coordinates(const Vector &p) const {
   if constexpr (Dim == 2) {
-    auto x = static_cast<int>(floor(p.x() / d_[0]));
-    auto y = static_cast<int>(floor(p.y() / d_[1]));
-    x = std::clamp(x, 0, num_points_[0] - 1);
-    y = std::clamp(y, 0, num_points_[1] - 1);
+    int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
+    int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
+
+    if (x < 0 || x >= num_points_[0]) {
+      std::cerr << "Warning: Clamping x coordinate from " << x
+                << " to range [0, " << num_points_[0] - 1 << "]\n";
+      x = std::clamp(x, 0, num_points_[0] - 1);
+    }
+    if (y < 0 || y >= num_points_[1]) {
+      std::cerr << "Warning: Clamping y coordinate from " << y
+                << " to range [0, " << num_points_[1] - 1 << "]\n";
+      y = std::clamp(y, 0, num_points_[1] - 1);
+    }
     return std::make_tuple(x, y);
   } else if constexpr (Dim == 3) {
-    auto x = static_cast<int>(floor(p.x() / d_[0]));
-    auto y = static_cast<int>(floor(p.y() / d_[1]));
-    auto z = static_cast<int>(floor(p.z() / d_[2]));
-    x = std::clamp(x, 0, num_points_[0] - 1);
-    y = std::clamp(y, 0, num_points_[1] - 1);
-    z = std::clamp(z, 0, num_points_[2] - 1);
+    int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
+    int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
+    int z = static_cast<int>(floor((p.z() - min_coords_[2]) / d_[2]));
+
+    if (x < 0 || x >= num_points_[0]) {
+      std::cerr << "Warning: Clamping x coordinate from " << x
+                << " to range [0, " << num_points_[0] - 1 << "]\n";
+      x = std::clamp(x, 0, num_points_[0] - 1);
+    }
+    if (y < 0 || y >= num_points_[1]) {
+      std::cerr << "Warning: Clamping y coordinate from " << y
+                << " to range [0, " << num_points_[1] - 1 << "]\n";
+      y = std::clamp(y, 0, num_points_[1] - 1);
+    }
+    if (z < 0 || z >= num_points_[2]) {
+      std::cerr << "Warning: Clamping z coordinate from " << z
+                << " to range [0, " << num_points_[2] - 1 << "]\n";
+      z = std::clamp(z, 0, num_points_[2] - 1);
+    }
     return std::make_tuple(x, y, z);
   }
 }
