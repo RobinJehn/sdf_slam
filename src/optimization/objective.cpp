@@ -136,17 +136,54 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
     // 2500 maps points + 6 transformations per row
     const auto &[point, desired_value] = point_value[i];
 
-    // Multiple parts
-    // How the distance value changes if I change the point
-    // How the point changes if I change the transformation
-
     // How the distance value changes if I change the map
     const auto &interpolation_point_indices =
         get_interpolation_point_indices<Dim>(point, state.map_);
+    const auto &interpolation_weights =
+        get_interpolation_weights<Dim>(point, state.map_);
     for (int j = 0; j < interpolation_point_indices.size(); ++j) {
       const auto &index = interpolation_point_indices[j];
-      const int map_index =
+      const int flattened_index =
           map_index_to_flattened_index<Dim>(num_map_points_, index);
+      const double weight = interpolation_weights[j];
+      jacobian(i, flattened_index) = weight;
+    }
+
+    // How the distance value changes if I change the point
+    Eigen::Matrix<double, 1, Dim> dDF_dPoint;
+    for (int d = 0; d < Dim; ++d) {
+      dDF_dPoint[d] = derivatives[d].value(point);
+    }
+
+    const int points_per_transform = point_value.size() / point_clouds_.size();
+    const int transformation_index = std::floor(i / points_per_transform);
+    // How the point changes if I change the transformation
+    Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)> dPoint_dTransformation;
+    if constexpr (Dim == 2) {
+      const Eigen::Matrix2d &rotation =
+          state.transformations_[transformation_index].rotation();
+      const double theta = std::atan2(rotation(1, 0), rotation(0, 0));
+      dPoint_dTransformation =
+          compute_transformation_derivative_2d(point, theta);
+    } else if constexpr (Dim == 3) {
+      const Eigen::Matrix3d &rotation =
+          state.transformations_[transformation_index].rotation();
+      const Eigen::Vector3d &euler_angles = rotation.eulerAngles(0, 1, 2);
+      const double theta = euler_angles[0];
+      const double phi = euler_angles[1];
+      const double psi = euler_angles[2];
+      dPoint_dTransformation =
+          compute_transformation_derivative_3d(point, theta, phi, psi);
+    }
+
+    Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+        dDF_dPoint * dPoint_dTransformation;
+
+    // Fill the Jacobian matrix with the computed derivatives
+    const int offset = num_map_points_.size() +
+                       transformation_index * (Dim + (Dim == 3 ? 3 : 1));
+    for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+      jacobian(i, offset + d) = dDF_dTransformation(d);
     }
   }
 

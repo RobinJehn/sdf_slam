@@ -110,7 +110,7 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
   for (const auto &transform : state.transformations_) {
     const auto translation = transform.translation();
 
-    Eigen::Matrix<double, 3, 1> euler_angles;
+    Eigen::Matrix<double, Dim, 1> euler_angles;
     if constexpr (Dim == 3) {
       euler_angles = transform.rotation().eulerAngles(0, 1, 2);
     } else if constexpr (Dim == 2) {
