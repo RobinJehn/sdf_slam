@@ -69,7 +69,8 @@ int main(int argc, char *argv[]) {
   // Use the Ceres ObjectiveFunctor for 2D (with manual Jacobian)
   ObjectiveFunctorCeres<2> *functor = new ObjectiveFunctorCeres<2>(
       num_points, min_coords, max_coords, point_clouds, num_line_points,
-      both_directions, step_size);
+      both_directions, step_size, 6 + map_size_x * map_size_y,
+      number_of_residuals);
 
   // Flatten the state into the parameter vector
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {

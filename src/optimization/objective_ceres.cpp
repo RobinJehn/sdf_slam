@@ -13,11 +13,12 @@ ObjectiveFunctorCeres<Dim>::ObjectiveFunctorCeres(
     const Vector &max_coords,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
     const int number_of_points, const bool both_directions,
-    const double step_size)
+    const double step_size, const int num_inputs, const int num_outputs)
     : num_map_points_(num_map_points), min_coords_(min_coords),
       max_coords_(max_coords), point_clouds_(point_clouds),
       number_of_points_(number_of_points), both_directions_(both_directions),
-      step_size_(step_size) {}
+      step_size_(step_size), num_inputs_(num_inputs),
+      num_outputs_(num_outputs) {}
 
 // Compute residuals
 template <int Dim>
@@ -94,24 +95,24 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
     Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
         dDF_dPoint * dPoint_dTransformation;
 
-    const int offset = num_map_points_.size() +
-                       transformation_index * (Dim + (Dim == 3 ? 3 : 1));
+    int total_map_points = 1;
+    for (int d = 0; d < Dim; ++d) {
+      total_map_points *= num_map_points_[d];
+    }
+    const int offset =
+        total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
     for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
       jacobian(i, offset + d) = dDF_dTransformation(d);
     }
   }
 }
 
-// Function to get number of input parameters
 template <int Dim> int ObjectiveFunctorCeres<Dim>::num_inputs() const {
-  return num_map_points_[0] * num_map_points_[1] +
-         point_clouds_.size() * (Dim + (Dim == 3 ? 3 : 1));
+  return num_inputs_;
 }
 
-// Function to get number of residuals (output size)
 template <int Dim> int ObjectiveFunctorCeres<Dim>::num_outputs() const {
-  return point_clouds_[0].size() * (num_line_points_ + 1) *
-         point_clouds_.size();
+  return num_outputs_;
 }
 
 // Explicit template instantiation
