@@ -1,5 +1,7 @@
 #include "state/state.hpp"
 #include <Eigen/Dense>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 /**
  * @brief Computes the derivative of a 3D transformation.
@@ -144,3 +146,30 @@ template <int Dim>
 Eigen::Matrix<double, (1 << Dim), 1>
 get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
                           const Map<Dim> &map);
+
+template <int Dim>
+std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
+generate_points_and_desired_values(
+    const State<Dim> &state,
+    const std::vector<pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &point_clouds,
+    const int number_of_points, const bool both_directions,
+    const double step_size);
+
+template <int Dim>
+Eigen::VectorXd compute_residuals(
+    const State<Dim> &state,
+    const std::vector<pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &point_clouds,
+    const int number_of_points, const bool both_directions,
+    const double step_size);
+
+template <int Dim>
+Eigen::VectorXd
+objective_vec(const State<Dim> &state,
+              const std::vector<pcl::PointCloud<typename std::conditional<
+                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
+              const int number_of_points, const bool both_directions,
+              const double step_size);

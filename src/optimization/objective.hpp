@@ -4,40 +4,10 @@
 #include <iostream>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <unsupported/Eigen/NonLinearOptimization>
-#include <unsupported/Eigen/NumericalDiff>
 #include <vector>
 
 template <int Dim> class State;
 
-template <int Dim>
-std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
-generate_points_and_desired_values(
-    const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size);
-
-template <int Dim>
-Eigen::VectorXd compute_residuals(
-    const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size);
-
-template <int Dim>
-Eigen::VectorXd
-objective_vec(const State<Dim> &state,
-              const std::vector<pcl::PointCloud<typename std::conditional<
-                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
-              const int number_of_points, const bool both_directions,
-              const double step_size);
-
-// Generic functor
 template <typename _Scalar, int NX = Eigen::Dynamic, int NY = Eigen::Dynamic>
 struct Functor {
   typedef _Scalar Scalar;
