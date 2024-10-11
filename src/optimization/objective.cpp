@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
+#include <vector>
 
 template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
   const int map_points = state.map_.get_num_points();
@@ -141,56 +142,13 @@ objective_vec(const State<Dim> &state,
                   Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
               const int number_of_points, const bool both_directions,
               const float step_size) {
-  // Combine scan_point_residuals and scan_line_residuals
-  Eigen::VectorXd point_residuals = scan_point_residuals(state, point_clouds);
-  Eigen::VectorXd line_residuals = scan_line_residuals(
-      state, point_clouds, number_of_points, both_directions, step_size);
-
-  Eigen::VectorXd combined_residuals(point_residuals.size() +
-                                     line_residuals.size());
-  combined_residuals << point_residuals, line_residuals;
-
-  return combined_residuals;
+  return compute_residuals(state, point_clouds, number_of_points,
+                           both_directions, step_size);
 }
 
 template <int Dim>
-Eigen::VectorXd scan_point_residuals(
-    const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds) {
-  assert(state.transformations_.size() == point_clouds.size() &&
-         "Number of transformations must match number of point clouds");
-
-  pcl::PointCloud<typename ObjectiveFunctor<Dim>::PointType> global_point_cloud;
-  for (size_t i = 0; i < point_clouds.size(); ++i) {
-    const auto &source_cloud = point_clouds[i];
-    pcl::PointCloud<typename ObjectiveFunctor<Dim>::PointType>
-        transformed_cloud;
-    const Eigen::Transform<float, Dim, Eigen::Affine> &transform =
-        state.transformations_[i];
-    pcl::transformPointCloud(source_cloud, transformed_cloud, transform);
-
-    global_point_cloud += transformed_cloud;
-  }
-
-  Eigen::VectorXd residuals(global_point_cloud.size());
-  for (size_t i = 0; i < global_point_cloud.size(); ++i) {
-    const auto &point = global_point_cloud[i];
-    Eigen::Matrix<float, Dim, 1> point_vector;
-    point_vector[0] = point.x;
-    point_vector[1] = point.y;
-    if constexpr (Dim == 3) {
-      point_vector[2] = point.z;
-    }
-    residuals(i) = state.map_.distance_to_surface(point_vector);
-  }
-
-  return residuals;
-}
-
-template <int Dim>
-Eigen::VectorXd scan_line_residuals(
+std::vector<std::pair<Eigen::Matrix<float, Dim, 1>, float>>
+generate_points_and_desired_values(
     const State<Dim> &state,
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
@@ -200,8 +158,8 @@ Eigen::VectorXd scan_line_residuals(
   assert(state.transformations_.size() == point_clouds.size() &&
          "Number of transformations must match number of point clouds");
 
-  pcl::PointCloud<typename ObjectiveFunctor<Dim>::PointType> global_point_cloud;
-  std::vector<float> distances;
+  std::vector<std::pair<Eigen::Matrix<float, Dim, 1>, float>>
+      point_desired_pairs;
 
   for (size_t i = 0; i < point_clouds.size(); ++i) {
     const auto &source_cloud = point_clouds[i];
@@ -212,105 +170,84 @@ Eigen::VectorXd scan_line_residuals(
     pcl::transformPointCloud(source_cloud, transformed_cloud, transform);
 
     for (const auto &point : transformed_cloud) {
-      Eigen::Matrix<float, Dim, 1> vector_to_origin;
+      Eigen::Matrix<float, Dim, 1> point_vector;
+      point_vector[0] = point.x;
+      point_vector[1] = point.y;
       if constexpr (Dim == 3) {
-        Eigen::Matrix<float, 3, 1> point_vector;
-        point_vector[0] = point.x;
-        point_vector[1] = point.y;
         point_vector[2] = point.z;
-        vector_to_origin = -point_vector.normalized() * step_size;
-      } else if constexpr (Dim == 2) {
-        Eigen::Matrix<float, 2, 1> point_vector;
-        point_vector[0] = point.x;
-        point_vector[1] = point.y;
-        vector_to_origin = -point_vector.normalized() * step_size;
       }
 
-      int desired_points = number_of_points / (both_directions ? 2 : 1) + 1;
-      for (int j = 1; j < desired_points; ++j) {
-        if constexpr (Dim == 3) {
-          pcl::PointXYZ new_point;
-          new_point.x = point.x + vector_to_origin[0] * j;
-          new_point.y = point.y + vector_to_origin[1] * j;
-          new_point.z = point.z + vector_to_origin[2] * j;
-          global_point_cloud.push_back(new_point);
-        } else if constexpr (Dim == 2) {
-          pcl::PointXY new_point;
-          new_point.x = point.x + vector_to_origin[0] * j;
-          new_point.y = point.y + vector_to_origin[1] * j;
-          global_point_cloud.push_back(new_point);
-        }
-        distances.push_back(step_size * j);
+      point_desired_pairs.emplace_back(
+          point_vector, 0.0f); // For point residuals, desired value is 0
 
-        if (both_directions) {
-          if constexpr (Dim == 3) {
-            pcl::PointXYZ new_point;
-            new_point.x = point.x - vector_to_origin[0] * j;
-            new_point.y = point.y - vector_to_origin[1] * j;
-            new_point.z = point.z - vector_to_origin[2] * j;
-            global_point_cloud.push_back(new_point);
-          } else if constexpr (Dim == 2) {
-            pcl::PointXY new_point;
-            new_point.x = point.x - vector_to_origin[0] * j;
-            new_point.y = point.y - vector_to_origin[1] * j;
-            global_point_cloud.push_back(new_point);
+      if (number_of_points > 0) {
+        Eigen::Matrix<float, Dim, 1> vector_to_origin =
+            -point_vector.normalized() * step_size;
+        int desired_points = number_of_points / (both_directions ? 2 : 1) + 1;
+        for (int j = 1; j < desired_points; ++j) {
+          Eigen::Matrix<float, Dim, 1> new_point_vector =
+              point_vector + vector_to_origin * j;
+          point_desired_pairs.emplace_back(new_point_vector, step_size * j);
+
+          if (both_directions) {
+            Eigen::Matrix<float, Dim, 1> new_point_vector_neg =
+                point_vector - vector_to_origin * j;
+            point_desired_pairs.emplace_back(new_point_vector_neg,
+                                             -step_size * j);
           }
-          distances.push_back(-step_size * j);
         }
       }
     }
   }
 
-  Eigen::VectorXd residuals(global_point_cloud.size());
-  for (size_t i = 0; i < global_point_cloud.size(); ++i) {
-    const auto &point = global_point_cloud[i];
-    Eigen::Matrix<float, Dim, 1> point_vector;
-    point_vector[0] = point.x;
-    point_vector[1] = point.y;
-    if constexpr (Dim == 3) {
-      point_vector[2] = point.z;
-    }
-    const float interpolated_value =
-        state.map_.distance_to_surface(point_vector);
-    residuals(i) = distances[i] - interpolated_value;
+  return point_desired_pairs;
+}
+
+template <int Dim>
+Eigen::VectorXd compute_residuals(
+    const State<Dim> &state,
+    const std::vector<pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &point_clouds,
+    const int number_of_points, const bool both_directions,
+    const float step_size) {
+  const auto &point_value = generate_points_and_desired_values(
+      state, point_clouds, number_of_points, both_directions, step_size);
+
+  Eigen::VectorXd residuals(point_value.size());
+  for (int i = 0; i < point_value.size(); ++i) {
+    const auto &[point, desired_value] = point_value[i];
+    const float interpolated_value = state.map_.value(point);
+    residuals(i) = desired_value - interpolated_value;
   }
 
   return residuals;
 }
 
+// Add a method to compute the Jacobian analytically
 template <int Dim>
-float objective(
-    const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds) {
-  assert(state.transformations_.size() == point_clouds.size() &&
-         "Number of transformations must match number of point clouds");
+int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
+                              Eigen::MatrixXd &jacobian) const {
+  State<Dim> state =
+      unflatten<Dim>(x, num_map_points_, min_coords_, max_coords_);
+  std::array<Map<Dim>, Dim> derivatives = state.map_.df();
 
-  pcl::PointCloud<typename ObjectiveFunctor<Dim>::PointType> global_point_cloud;
-  for (size_t i = 0; i < point_clouds.size(); ++i) {
-    const auto &source_cloud = point_clouds[i];
-    pcl::PointCloud<typename ObjectiveFunctor<Dim>::PointType>
-        transformed_cloud;
-    const Eigen::Transform<float, Dim, Eigen::Affine> &transform =
-        state.transformations_[i];
-    pcl::transformPointCloud(source_cloud, transformed_cloud, transform);
-
-    global_point_cloud += transformed_cloud;
-  }
-
-  float distance = 0.0;
-  for (const auto &point : global_point_cloud) {
-    Eigen::Matrix<float, Dim, 1> point_vector;
-    point_vector[0] = point.x;
-    point_vector[1] = point.y;
-    if constexpr (Dim == 3) {
-      point_vector[2] = point.z;
+  for (int i = 0; i < values(); ++i) {
+    for (int j = 0; j < x.size(); ++j) {
+      // Compute the derivative of residual i with respect to parameter j
+      jacobian(i, j) = compute_derivative(i, j, x);
     }
-    distance += state.map_.distance_to_surface(point_vector);
   }
 
-  return distance;
+  return 0;
+}
+
+template <int Dim>
+double
+ObjectiveFunctor<Dim>::compute_derivative(int residual_index, int param_index,
+                                          const Eigen::VectorXd &x) const {
+
+  return 0.0;
 }
 
 // Explicit template instantiation
@@ -336,9 +273,3 @@ template Eigen::VectorXd objective_vec<3>(
     const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
     const int number_of_points, const bool both_directions,
     const float step_size);
-template float
-objective<2>(const State<2> &state,
-             const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds);
-template float
-objective<3>(const State<3> &state,
-             const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds);

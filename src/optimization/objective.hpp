@@ -4,29 +4,24 @@
 #include <iostream>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <vector>
-
 #include <unsupported/Eigen/NonLinearOptimization>
 #include <unsupported/Eigen/NumericalDiff>
+#include <vector>
 
 template <int Dim> class State;
 
 template <int Dim>
-float objective(
+std::vector<std::pair<Eigen::Matrix<float, Dim, 1>, float>>
+generate_points_and_desired_values(
     const State<Dim> &state,
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds);
+        &point_clouds,
+    const int number_of_points, const bool both_directions,
+    const float step_size);
 
 template <int Dim>
-Eigen::VectorXd scan_point_residuals(
-    const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds);
-
-template <int Dim>
-Eigen::VectorXd scan_line_residuals(
+Eigen::VectorXd compute_residuals(
     const State<Dim> &state,
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
@@ -96,4 +91,26 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   const int number_of_points_;
   const bool both_directions_;
   const float step_size_;
+
+  /**
+   * @brief Compute the partial derivatives of the objective function
+   * (residuals) with respect to each parameter in `x`.
+   *
+   * @param x The current parameter values
+   * @param jacobian The matrix to store the computed partial derivatives
+   * @return int 0 to indicate success
+   */
+  int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
+
+private:
+  /**
+   * @brief Compute the derivative of the residual with respect to the parameter
+   *
+   * @param residual_index The index of the residual
+   * @param param_index The index of the parameter
+   * @param x The current parameter values
+   * @return double The computed derivative
+   */
+  double compute_derivative(int residual_index, int param_index,
+                            const Eigen::VectorXd &x) const;
 };
