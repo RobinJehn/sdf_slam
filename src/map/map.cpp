@@ -86,12 +86,23 @@ template <int Dim> double Map<Dim>::value(const Vector &p) const {
     const int x_index = grid_indices[0];
     const int y_index = grid_indices[1];
 
-    const double c00 = get_value_at({x_index, y_index});
-    const double c10 = get_value_at({x_index + 1, y_index});
-    const double c01 = get_value_at({x_index, y_index + 1});
-    const double c11 = get_value_at({x_index + 1, y_index + 1});
+    const int x_index_clamped = std::clamp(x_index, 0, num_points_[0] - 2);
+    if (x_index != x_index_clamped) {
+      std::cerr << "Warning: Clamping x index from " << x_index << " to "
+                << x_index_clamped << "\n";
+    }
+    const int y_index_clamped = std::clamp(y_index, 0, num_points_[1] - 2);
+    if (y_index != y_index_clamped) {
+      std::cerr << "Warning: Clamping y index from " << y_index << " to "
+                << y_index_clamped << "\n";
+    }
 
-    const Vector p_floor(x_index * d_[0], y_index * d_[1]);
+    const double c00 = get_value_at({x_index_clamped, y_index_clamped});
+    const double c10 = get_value_at({x_index_clamped + 1, y_index_clamped});
+    const double c01 = get_value_at({x_index_clamped, y_index_clamped + 1});
+    const double c11 = get_value_at({x_index_clamped + 1, y_index_clamped + 1});
+
+    const Vector p_floor(x_index_clamped * d_[0], y_index_clamped * d_[1]);
 
     return bilinear_interpolation(p, p_floor, d_[0], d_[1], c00, c10, c01, c11);
   } else if constexpr (Dim == 3) {
@@ -99,16 +110,41 @@ template <int Dim> double Map<Dim>::value(const Vector &p) const {
     const int y_index = grid_indices[1];
     const int z_index = grid_indices[2];
 
-    const double c000 = get_value_at({x_index, y_index, z_index});
-    const double c100 = get_value_at({x_index + 1, y_index, z_index});
-    const double c010 = get_value_at({x_index, y_index + 1, z_index});
-    const double c110 = get_value_at({x_index + 1, y_index + 1, z_index});
-    const double c001 = get_value_at({x_index, y_index, z_index + 1});
-    const double c101 = get_value_at({x_index + 1, y_index, z_index + 1});
-    const double c011 = get_value_at({x_index, y_index + 1, z_index + 1});
-    const double c111 = get_value_at({x_index + 1, y_index + 1, z_index + 1});
+    const int x_index_clamped = std::clamp(x_index, 0, num_points_[0] - 2);
+    if (x_index != x_index_clamped) {
+      std::cerr << "Warning: Clamping x index from " << x_index << " to "
+                << x_index_clamped << "\n";
+    }
+    const int y_index_clamped = std::clamp(y_index, 0, num_points_[1] - 2);
+    if (y_index != y_index_clamped) {
+      std::cerr << "Warning: Clamping y index from " << y_index << " to "
+                << y_index_clamped << "\n";
+    }
+    const int z_index_clamped = std::clamp(z_index, 0, num_points_[2] - 2);
+    if (z_index != z_index_clamped) {
+      std::cerr << "Warning: Clamping z index from " << z_index << " to "
+                << z_index_clamped << "\n";
+    }
 
-    const Vector p_floor(x_index * d_[0], y_index * d_[1], z_index * d_[2]);
+    const double c000 =
+        get_value_at({x_index_clamped, y_index_clamped, z_index_clamped});
+    const double c100 =
+        get_value_at({x_index_clamped + 1, y_index_clamped, z_index_clamped});
+    const double c010 =
+        get_value_at({x_index_clamped, y_index_clamped + 1, z_index_clamped});
+    const double c110 = get_value_at(
+        {x_index_clamped + 1, y_index_clamped + 1, z_index_clamped});
+    const double c001 =
+        get_value_at({x_index_clamped, y_index_clamped, z_index_clamped + 1});
+    const double c101 = get_value_at(
+        {x_index_clamped + 1, y_index_clamped, z_index_clamped + 1});
+    const double c011 = get_value_at(
+        {x_index_clamped, y_index_clamped + 1, z_index_clamped + 1});
+    const double c111 = get_value_at(
+        {x_index_clamped + 1, y_index_clamped + 1, z_index_clamped + 1});
+
+    const Vector p_floor(x_index_clamped * d_[0], y_index_clamped * d_[1],
+                         z_index_clamped * d_[2]);
 
     return trilinear_interpolation(p, p_floor, d_[0], d_[1], d_[2], c000, c100,
                                    c010, c110, c001, c101, c011, c111);
