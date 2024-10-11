@@ -1,6 +1,7 @@
 #include "map/map.hpp"
 #include "optimization/objective.hpp"
 #include "optimization/optimizer.hpp"
+#include "optimization/utils.hpp"
 #include "scan/generate.hpp"
 #include "state/state.hpp"
 #include <Eigen/Dense>
@@ -36,38 +37,38 @@ int main(int argc, char *argv[]) {
 
   // Initialize the map
   std::array<int, 2> num_points = {map_size_x, map_size_y};
-  Eigen::Vector2f min_coords(x_min, y_min);
-  Eigen::Vector2f max_coords(x_max, y_max);
+  Eigen::Vector2d min_coords(x_min, y_min);
+  Eigen::Vector2d max_coords(x_max, y_max);
   Map<2> map(num_points, min_coords, max_coords);
 
   // Define the initial frame and initial guess for the optimization
-  Eigen::Transform<float, 2, Eigen::Affine> initial_frame;
+  Eigen::Transform<double, 2, Eigen::Affine> initial_frame;
   initial_frame =
-      Eigen::Translation<float, 2>(scanner_position_1.cast<float>()) *
-      Eigen::Rotation2D<float>(static_cast<float>(theta_scanner_1));
-  Eigen::Transform<float, 2, Eigen::Affine> initial_frame_2;
+      Eigen::Translation<double, 2>(scanner_position_1) *
+      Eigen::Rotation2D<double>(static_cast<double>(theta_scanner_1));
+  Eigen::Transform<double, 2, Eigen::Affine> initial_frame_2;
   initial_frame_2 =
-      Eigen::Translation<float, 2>(scanner_position_2.cast<float>()) *
-      Eigen::Rotation2D<float>(static_cast<float>(theta_scanner_2));
+      Eigen::Translation<double, 2>(scanner_position_2) *
+      Eigen::Rotation2D<double>(static_cast<double>(theta_scanner_2));
 
   // Create the point clouds vector
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scan1, *scan2};
 
   // Create the objective functor
   const bool both_directions = true;
-  const float step_size = 0.1;
+  const double step_size = 0.1;
   const int num_line_points = 20;
 
   const int number_of_scanned_points = scan1->size() + scan2->size();
   const int number_of_residuals =
       number_of_scanned_points * (num_line_points + 1);
   ObjectiveFunctor<2> functor(6 + map_size_x * map_size_y, number_of_residuals,
-                              num_points, min_coords.cast<float>(),
-                              max_coords.cast<float>(), point_clouds,
+                              num_points, min_coords.cast<double>(),
+                              max_coords.cast<double>(), point_clouds,
                               num_line_points, both_directions, step_size);
 
   // Define the initial parameters for the optimization
-  std::vector<Eigen::Transform<float, 2, Eigen::Affine>> transformations = {
+  std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {
       initial_frame, initial_frame_2};
   Eigen::VectorXd initial_params = flatten<2>(State<2>(map, transformations));
   if (initial_params.size() != functor.inputs()) {

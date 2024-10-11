@@ -2,9 +2,10 @@
 #include "map/map.hpp"
 
 template <int Dim>
-State<Dim>::State(const Map<Dim> &map,
-                  const std::vector<Eigen::Transform<float, Dim, Eigen::Affine>>
-                      &transformations)
+State<Dim>::State(
+    const Map<Dim> &map,
+    const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>>
+        &transformations)
     : map_(map), transformations_(transformations) {}
 
 // Explicit template instantiation if needed

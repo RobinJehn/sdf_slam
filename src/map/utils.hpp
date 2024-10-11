@@ -31,13 +31,13 @@
  *
  * @return The trilinearly interpolated value at the point (x, y, z).
  */
-float trilinear_interpolation(const Eigen::Vector3f &p,
-                              const Eigen::Vector3f &p_floor, const float dx,
-                              const float dy, const float dz, const float c000,
-                              const float c100, const float c010,
-                              const float c110, const float c001,
-                              const float c101, const float c011,
-                              const float c111);
+double trilinear_interpolation(const Eigen::Vector3d &p,
+                               const Eigen::Vector3d &p_floor, const double dx,
+                               const double dy, const double dz,
+                               const double c000, const double c100,
+                               const double c010, const double c110,
+                               const double c001, const double c101,
+                               const double c011, const double c111);
 
 /**
  * @brief Performs bilinear interpolation within a 2D space defined by four
@@ -62,7 +62,8 @@ float trilinear_interpolation(const Eigen::Vector3f &p,
  *
  * @return The bilinearly interpolated value at the point (x, y).
  */
-float bilinear_interpolation(const Eigen::Vector2f &p,
-                             const Eigen::Vector2f &p_floor, const float dx,
-                             const float dy, const float c00, const float c10,
-                             const float c01, const float c11);
+double bilinear_interpolation(const Eigen::Vector2d &p,
+                              const Eigen::Vector2d &p_floor, const double dx,
+                              const double dy, const double c00,
+                              const double c10, const double c01,
+                              const double c11);

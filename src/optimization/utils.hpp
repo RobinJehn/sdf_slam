@@ -1,3 +1,4 @@
+#include "state/state.hpp"
 #include <Eigen/Dense>
 
 /**
@@ -73,3 +74,73 @@ Eigen::Matrix3d dR_dphi(const double theta, const double phi, const double psi);
  * @return Eigen::Matrix3d
  */
 Eigen::Matrix3d dR_dpsi(const double theta, const double phi, const double psi);
+
+/**
+ * @brief Flattens the given state into a single vector.
+ *
+ * This function takes a state object and converts it into a single
+ * Eigen::VectorXd. The resulting vector is composed of two parts:
+ * - The first part represents the map.
+ * - The second part represents the transformation.
+ *
+ * @tparam Dim The dimension of the state.
+ * @param state The state object to be flattened.
+ * @return A flattened Eigen::VectorXd representing the state.
+ */
+template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
+
+/** * @brief Unflattens the given vector into a state object.
+ *
+ * This function takes a flattened Eigen::VectorXd and converts it back into a
+ * State object. The input vector is assumed to be composed of two parts:
+ * - The first part represents the map.
+ * - The second part represents the transformation.
+ *
+ * @tparam Dim The dimension of the state.
+ * @param flattened_state The flattened Eigen::VectorXd to be unflattened.
+ * @param num_points The number of points in each dimension.
+ * @param min_coords The minimum coordinates in each dimension.
+ * @param max_coords The maximum coordinates in each dimension.
+ * @return An unflattened State object.
+ */
+template <int Dim>
+State<Dim> unflatten(const Eigen::VectorXd &flattened_state,
+                     const std::array<int, Dim> &num_points,
+                     const Eigen::Matrix<double, Dim, 1> &min_coords,
+                     const Eigen::Matrix<double, Dim, 1> &max_coords);
+
+template <int Dim>
+int map_index_to_flattened_index(const std::array<int, Dim> &num_points,
+                                 const typename Map<Dim>::index_t &index);
+
+/**
+ * @brief This function returns the index of the grid cells that are used to
+ * interpolate the value at the given point `p`. The number of interpolation
+ * points is equal to 2^Dim.
+ *
+ * @tparam Dim The dimension of the space.
+ * @param p The point for which interpolation points are to be computed.
+ * @param map The map in which the point `p` is located.
+ * @return An array of interpolation points.
+ */
+template <int Dim>
+std::array<typename Map<Dim>::index_t, (1 << Dim)>
+get_interpolation_point_indices(const Eigen::Matrix<double, Dim, 1> &p,
+                                const Map<Dim> &map);
+
+/**
+ * @brief Computes the interpolation weights for a given point in a map.
+ *
+ * This function calculates the interpolation weights for a point `p` in a
+ * map of dimension `Dim`. The weights are used for interpolating values
+ * within the map.
+ *
+ * @tparam Dim The dimension of the map and the point.
+ * @param p The point for which to compute the interpolation weights.
+ * @param map The map in which the point is located.
+ * @return An Eigen::Matrix of size `Dim` containing the interpolation weights.
+ */
+template <int Dim>
+Eigen::Matrix<double, (1 << Dim), 1>
+get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
+                          const Map<Dim> &map);

@@ -15,14 +15,14 @@ Map<Dim>::Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
   if constexpr (Dim == 2) {
     for (int x = 0; x < num_points_[0]; ++x) {
       for (int y = 0; y < num_points_[1]; ++y) {
-        grid_values_[std::make_tuple(x, y)] = 0.0;
+        grid_values_[{x, y}] = 0.0;
       }
     }
   } else if constexpr (Dim == 3) {
     for (int x = 0; x < num_points_[0]; ++x) {
       for (int y = 0; y < num_points_[1]; ++y) {
         for (int z = 0; z < num_points_[2]; ++z) {
-          grid_values_[std::make_tuple(x, y, z)] = 0.0;
+          grid_values_[{x, y, z}] = 0.0;
         }
       }
     }
@@ -30,8 +30,7 @@ Map<Dim>::Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
 }
 
 template <int Dim>
-typename Map<Dim>::index_t
-Map<Dim>::get_grid_coordinates(const Vector &p) const {
+typename Map<Dim>::index_t Map<Dim>::get_grid_indices(const Vector &p) const {
   if constexpr (Dim == 2) {
     int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
     int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
@@ -46,7 +45,7 @@ Map<Dim>::get_grid_coordinates(const Vector &p) const {
                 << " to range [0, " << num_points_[1] - 1 << "]\n";
       y = std::clamp(y, 0, num_points_[1] - 1);
     }
-    return std::make_tuple(x, y);
+    return {x, y};
   } else if constexpr (Dim == 3) {
     int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
     int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
@@ -67,50 +66,49 @@ Map<Dim>::get_grid_coordinates(const Vector &p) const {
                 << " to range [0, " << num_points_[2] - 1 << "]\n";
       z = std::clamp(z, 0, num_points_[2] - 1);
     }
-    return std::make_tuple(x, y, z);
+    return {x, y, z};
   }
 }
 
-template <int Dim> float Map<Dim>::get_value_at(const index_t &coords) const {
+template <int Dim> double Map<Dim>::get_value_at(const index_t &coords) const {
   return grid_values_.at(coords);
 }
 
 template <int Dim>
-void Map<Dim>::set_value_at(const index_t &coords, const float value) {
+void Map<Dim>::set_value_at(const index_t &coords, const double value) {
   grid_values_[coords] = value;
 }
 
-template <int Dim> float Map<Dim>::value(const Vector &p) const {
-  const auto grid_coords = get_grid_coordinates(p);
+template <int Dim> double Map<Dim>::value(const Vector &p) const {
+  const auto grid_indices = get_grid_indices(p);
 
   if constexpr (Dim == 2) {
-    const int x_floor = std::get<0>(grid_coords);
-    const int y_floor = std::get<1>(grid_coords);
+    const int x_index = grid_indices[0];
+    const int y_index = grid_indices[1];
 
-    const float c00 = get_value_at({x_floor, y_floor});
-    const float c10 = get_value_at({x_floor + 1, y_floor});
-    const float c01 = get_value_at({x_floor, y_floor + 1});
-    const float c11 = get_value_at({x_floor + 1, y_floor + 1});
+    const double c00 = get_value_at({x_index, y_index});
+    const double c10 = get_value_at({x_index + 1, y_index});
+    const double c01 = get_value_at({x_index, y_index + 1});
+    const double c11 = get_value_at({x_index + 1, y_index + 1});
 
-    const Eigen::Vector2f p_floor(x_floor * d_[0], y_floor * d_[1]);
+    const Vector p_floor(x_index * d_[0], y_index * d_[1]);
 
     return bilinear_interpolation(p, p_floor, d_[0], d_[1], c00, c10, c01, c11);
   } else if constexpr (Dim == 3) {
-    const int x_floor = std::get<0>(grid_coords);
-    const int y_floor = std::get<1>(grid_coords);
-    const int z_floor = std::get<2>(grid_coords);
+    const int x_index = grid_indices[0];
+    const int y_index = grid_indices[1];
+    const int z_index = grid_indices[2];
 
-    const float c000 = get_value_at({x_floor, y_floor, z_floor});
-    const float c100 = get_value_at({x_floor + 1, y_floor, z_floor});
-    const float c010 = get_value_at({x_floor, y_floor + 1, z_floor});
-    const float c110 = get_value_at({x_floor + 1, y_floor + 1, z_floor});
-    const float c001 = get_value_at({x_floor, y_floor, z_floor + 1});
-    const float c101 = get_value_at({x_floor + 1, y_floor, z_floor + 1});
-    const float c011 = get_value_at({x_floor, y_floor + 1, z_floor + 1});
-    const float c111 = get_value_at({x_floor + 1, y_floor + 1, z_floor + 1});
+    const double c000 = get_value_at({x_index, y_index, z_index});
+    const double c100 = get_value_at({x_index + 1, y_index, z_index});
+    const double c010 = get_value_at({x_index, y_index + 1, z_index});
+    const double c110 = get_value_at({x_index + 1, y_index + 1, z_index});
+    const double c001 = get_value_at({x_index, y_index, z_index + 1});
+    const double c101 = get_value_at({x_index + 1, y_index, z_index + 1});
+    const double c011 = get_value_at({x_index, y_index + 1, z_index + 1});
+    const double c111 = get_value_at({x_index + 1, y_index + 1, z_index + 1});
 
-    const Eigen::Vector3f p_floor(x_floor * d_[0], y_floor * d_[1],
-                                  z_floor * d_[2]);
+    const Vector p_floor(x_index * d_[0], y_index * d_[1], z_index * d_[2]);
 
     return trilinear_interpolation(p, p_floor, d_[0], d_[1], d_[2], c000, c100,
                                    c010, c110, c001, c101, c011, c111);
@@ -138,8 +136,8 @@ template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
   for (int i = 0; i < num_points_[0]; ++i) {
     for (int j = 0; j < num_points_[1]; ++j) {
       if constexpr (Dim == 2) {
-        float grad_x = 0.0f;
-        float grad_y = 0.0f;
+        double grad_x = 0.0f;
+        double grad_y = 0.0f;
 
         // Compute gradient in the x-direction
         if (i > 0 && i < num_points_[0] - 1) {
@@ -166,9 +164,9 @@ template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
         derivatives[1].set_value_at({i, j}, grad_y);
       } else if constexpr (Dim == 3) {
         for (int k = 0; k < num_points_[2]; ++k) {
-          float grad_x = 0.0f;
-          float grad_y = 0.0f;
-          float grad_z = 0.0f;
+          double grad_x = 0.0f;
+          double grad_y = 0.0f;
+          double grad_z = 0.0f;
 
           // Compute gradient in the x-direction
           if (i > 0 && i < num_points_[0] - 1) {
