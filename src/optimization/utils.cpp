@@ -337,7 +337,7 @@ Eigen::VectorXd compute_residuals(
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
     const double interpolated_value = state.map_.value(point);
-    residuals(i) = desired_value - interpolated_value;
+    residuals(i) = interpolated_value - desired_value;
   }
 
   return residuals;
