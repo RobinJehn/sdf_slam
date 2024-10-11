@@ -18,6 +18,13 @@ template <typename... T> struct hash<std::tuple<T...>> {
 };
 } // namespace std
 
+/**
+ * @brief Generic class to represent a map in 2D or 3D. The map is represented
+ * as a grid of points, where each point has a value. The map can be queried at
+ * any point, and the value is interpolated from the grid points.
+ *
+ * @tparam Dim The dimension of the map (2 or 3)
+ */
 template <int Dim> class Map {
   static_assert(Dim == 2 || Dim == 3, "Dim must be 2 or 3");
 
@@ -26,7 +33,13 @@ template <int Dim> class Map {
   using Vector = std::conditional_t<Dim == 2, Eigen::Vector2f, Eigen::Vector3f>;
 
 public:
-  float distance_to_surface(const Vector &p) const;
+  /**
+   * @brief Get the value at a certain point in the map
+   *
+   * @param p
+   * @return float
+   */
+  float value(const Vector &p) const;
 
   /**
    * @brief Construct a new Map object
@@ -53,13 +66,23 @@ public:
 
   float get_d(int dim) const { return d_[dim]; }
 
-  void set_value_at(const std::array<int, Dim> &coords, const float value);
+  void set_value_at(const index_t &coords, const float value);
 
   /** Get the value at a certain grid point */
-  float get_value_at(const std::array<int, Dim> &coords) const;
+  float get_value_at(const index_t &coords) const;
+
+  /**
+   * @brief Compute the derivative of the map
+   * This function computes the derivative of the map in each dimension
+   * using finite differences with neighboring nodes.
+   *
+   * @return std::array<Map<Dim>, Dim> A set of maps representing the derivative
+   * in each dimension
+   */
+  std::array<Map<Dim>, Dim> df() const;
 
 private:
-  /** Distance values at grid points */
+  /** Values at grid points */
   std::unordered_map<index_t, float> grid_values_;
 
   /** Size of the grid in each dimension */
