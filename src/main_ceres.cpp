@@ -1,6 +1,5 @@
 #include "map/map.hpp"
-#include "optimization/objective_ceres.hpp" // Use the Ceres-based objective
-#include "optimization/optimizer.hpp"
+#include "optimization/objective_ceres.hpp"
 #include "optimization/utils.hpp"
 #include "scan/generate.hpp"
 #include "state/state.hpp"
