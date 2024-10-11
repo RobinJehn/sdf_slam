@@ -7,7 +7,6 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <unsupported/Eigen/NumericalDiff>
 
 int main(int argc, char *argv[]) {
   double x_scanner_1 = 3.5;
@@ -92,9 +91,8 @@ int main(int argc, char *argv[]) {
   auto callback = [](const Eigen::VectorXd &x, int iter, double error) {
     std::cout << "Iteration " << iter << ": Error = " << error << std::endl;
   };
-  Eigen::NumericalDiff<ObjectiveFunctor<2>> num_diff(functor);
-  LevenbergMarquardtWithCallback<Eigen::NumericalDiff<ObjectiveFunctor<2>>>
-      lm_wrapper(num_diff, callback);
+  LevenbergMarquardtWithCallback<ObjectiveFunctor<2>> lm_wrapper(functor,
+                                                                 callback);
   lm_wrapper.lm.parameters.factor = 10.0;
   lm_wrapper.lm.parameters.maxfev = 100 * (functor.inputs() + 1);
   lm_wrapper.lm.parameters.ftol = 1e-8;

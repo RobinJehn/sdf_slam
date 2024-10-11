@@ -29,3 +29,4 @@ LevenbergMarquardtWithCallback<FunctorType, Scalar>::minimize(FVectorType &x) {
 // Explicit template instantiation for specific types
 template class LevenbergMarquardtWithCallback<
     Eigen::NumericalDiff<ObjectiveFunctor<2>>, double>;
+template class LevenbergMarquardtWithCallback<ObjectiveFunctor<2>, double>;

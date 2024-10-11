@@ -73,8 +73,8 @@ generate_points_and_desired_values(
         point_vector[2] = point.z;
       }
 
-      point_desired_pairs.emplace_back(
-          point_vector, 0.0f); // For point residuals, desired value is 0
+      // For point residuals, desired value is 0
+      point_desired_pairs.emplace_back(point_vector, 0.0);
 
       if (number_of_points > 0) {
         Eigen::Matrix<double, Dim, 1> vector_to_origin =
@@ -131,9 +131,7 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
 
   const auto &point_value = generate_points_and_desired_values(
       state, point_clouds_, number_of_points_, both_directions_, step_size_);
-
   for (int i = 0; i < point_value.size(); ++i) {
-    // 2500 maps points + 6 transformations per row
     const auto &[point, desired_value] = point_value[i];
 
     // How the distance value changes if I change the map

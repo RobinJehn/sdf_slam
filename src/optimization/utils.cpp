@@ -212,7 +212,7 @@ get_interpolation_point_indices(const Eigen::Matrix<double, Dim, 1> &p,
   for (int i = 0; i < (1 << Dim); ++i) {
     typename Map<Dim>::index_t point;
     for (int d = 0; d < Dim; ++d) {
-      point[d] = index[i] + ((i >> d) & 1);
+      point[d] = index[d] + ((i >> d) & 1);
     }
     interpolation_point_indices[i] = point;
   }
@@ -229,7 +229,7 @@ get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
   Eigen::Matrix<double, Dim, 1> weights;
   for (int d = 0; d < Dim; ++d) {
     const double grid_size = map.get_d(d);
-    const double floor_coord = index[d] * grid_size;
+    const double floor_coord = index[d] * grid_size + map.get_min_coord(d);
     const double coord = p[d];
 
     weights[d] = (coord - floor_coord) / grid_size;

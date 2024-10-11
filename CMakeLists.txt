@@ -46,9 +46,13 @@ set(OPTIMIZATION_PATH
 )
 set(OPTIMIZATION_SOURCES
     ${OPTIMIZATION_PATH}/objective.cpp
+    ${OPTIMIZATION_PATH}/optimizer.cpp
+    ${OPTIMIZATION_PATH}/utils.cpp
 )
 set(OPTIMIZATION_HEADERS
     ${OPTIMIZATION_PATH}/objective.hpp
+    ${OPTIMIZATION_PATH}/optimizer.hpp
+    ${OPTIMIZATION_PATH}/utils.hpp
 )
 
 set(SOURCES
