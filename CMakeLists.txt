@@ -1,82 +1,72 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Set the project name
-project(sdf_slam)
+project(sdf_slam VERSION 1.0 LANGUAGES CXX)
 
-# Specify the C++ standard
+# Specify the C++ standard globally
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Define common variables for build type and paths
 set(CMAKE_BUILD_TYPE Debug)
-
-# Add the sources
 set(MAP_PATH src/map)
 set(SCAN_PATH src/scan)
 set(STATE_PATH src/state)
 set(OPTIMIZATION_PATH src/optimization)
 
-# Source and header files for common components
+# Add common sources and headers
 set(MAP_SOURCES
     ${MAP_PATH}/map.cpp
     ${MAP_PATH}/utils.cpp
 )
+set(SCAN_SOURCES
+    ${SCAN_PATH}/generate.cpp
+)
+set(STATE_SOURCES
+    ${STATE_PATH}/state.cpp
+)
+set(OPTIMIZATION_SOURCES_COMMON
+    ${OPTIMIZATION_PATH}/utils.cpp
+)
+
 set(MAP_HEADERS
     ${MAP_PATH}/map.hpp
     ${MAP_PATH}/utils.hpp
 )
-
-set(SCAN_SOURCES
-    ${SCAN_PATH}/generate.cpp
-)
 set(SCAN_HEADERS
     ${SCAN_PATH}/generate.hpp
-)
-
-set(STATE_SOURCES
-    ${STATE_PATH}/state.cpp
 )
 set(STATE_HEADERS
     ${STATE_PATH}/state.hpp
 )
-
-# Common optimization sources (excluding objective)
-set(OPTIMIZATION_SOURCES_COMMON
-    ${OPTIMIZATION_PATH}/optimizer.cpp
-    ${OPTIMIZATION_PATH}/utils.cpp
-)
 set(OPTIMIZATION_HEADERS_COMMON
-    ${OPTIMIZATION_PATH}/optimizer.hpp
     ${OPTIMIZATION_PATH}/utils.hpp
 )
 
-# Include directory for source files
-include_directories(src)
+# ================================================
+# Find and include external libraries
+# ================================================
 
 # Find and include PCL
 find_package(PCL 1.8 REQUIRED)
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
-# Find and include Eigen3
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-
-# Find and include OpenCV
 find_package(OpenCV REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
+find_package(Ceres REQUIRED)
+find_package(glog REQUIRED)
 
 # ================================================
 # Target: sdf_slam (Levenberg-Marquardt-based)
 # ================================================
 set(OPTIMIZATION_SOURCES_LM
+    ${OPTIMIZATION_PATH}/optimizer.cpp
     ${OPTIMIZATION_PATH}/objective.cpp
 )
-
 set(OPTIMIZATION_HEADERS_LM
+    ${OPTIMIZATION_PATH}/optimizer.hpp
     ${OPTIMIZATION_PATH}/objective.hpp
 )
 
-# Create executable for sdf_slam (Levenberg-Marquardt)
+# Create executable for sdf_slam (Levenberg-Marquardt-based)
 add_executable(sdf_slam
     src/main.cpp
     ${MAP_SOURCES}
@@ -86,13 +76,18 @@ add_executable(sdf_slam
     ${OPTIMIZATION_SOURCES_LM}
 )
 
-# Include directories for sdf_slam (after target creation)
-target_include_directories(sdf_slam PRIVATE ${EIGEN3_INCLUDE_DIR})
-
+# Link libraries and include directories for sdf_slam
 target_link_libraries(sdf_slam
     ${PCL_LIBRARIES}
     Eigen3::Eigen
     ${OpenCV_LIBS}
+)
+
+target_include_directories(sdf_slam PRIVATE
+    src
+    ${EIGEN3_INCLUDE_DIR}
+    ${PCL_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 # ================================================
@@ -106,13 +101,6 @@ set(OPTIMIZATION_HEADERS_CERES
     ${OPTIMIZATION_PATH}/objective_ceres.hpp
 )
 
-# Find and include Ceres
-find_package(Ceres REQUIRED)
-include_directories(${CERES_INCLUDE_DIRS})
-
-# Find glog
-find_package(glog REQUIRED)
-
 # Create executable for sdf_slam_ceres (Ceres-based)
 add_executable(sdf_slam_ceres
     src/main_ceres.cpp
@@ -123,13 +111,19 @@ add_executable(sdf_slam_ceres
     ${OPTIMIZATION_SOURCES_CERES}
 )
 
-# Include directories for sdf_slam_ceres
-target_include_directories(sdf_slam_ceres PRIVATE ${EIGEN3_INCLUDE_DIR})
-
+# Link libraries and include directories for sdf_slam_ceres
 target_link_libraries(sdf_slam_ceres
     ${PCL_LIBRARIES}
     Eigen3::Eigen
     ${OpenCV_LIBS}
     Ceres::ceres
     glog::glog
+)
+
+target_include_directories(sdf_slam_ceres PRIVATE
+    src
+    ${EIGEN3_INCLUDE_DIR}
+    ${PCL_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
 )
