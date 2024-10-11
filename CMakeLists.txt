@@ -10,9 +10,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE Debug)
 
 # Add the sources
-set(MAP_PATH
-    src/map
-)
+set(MAP_PATH src/map)
+set(SCAN_PATH src/scan)
+set(STATE_PATH src/state)
+set(OPTIMIZATION_PATH src/optimization)
+
+# Source and header files for common components
 set(MAP_SOURCES
     ${MAP_PATH}/map.cpp
     ${MAP_PATH}/utils.cpp
@@ -22,10 +25,6 @@ set(MAP_HEADERS
     ${MAP_PATH}/utils.hpp
 )
 
-set(SCAN_PATH
-    src/scan
-)
-
 set(SCAN_SOURCES
     ${SCAN_PATH}/generate.cpp
 )
@@ -33,74 +32,104 @@ set(SCAN_HEADERS
     ${SCAN_PATH}/generate.hpp
 )
 
-set(STATE_PATH
-    src/state
-)
 set(STATE_SOURCES
-    ${STATE_PATH}/state.cpp)
+    ${STATE_PATH}/state.cpp
+)
 set(STATE_HEADERS
     ${STATE_PATH}/state.hpp
 )
-set(OPTIMIZATION_PATH
-    src/optimization
-)
-set(OPTIMIZATION_SOURCES
-    ${OPTIMIZATION_PATH}/objective.cpp
+
+# Common optimization sources (excluding objective)
+set(OPTIMIZATION_SOURCES_COMMON
     ${OPTIMIZATION_PATH}/optimizer.cpp
     ${OPTIMIZATION_PATH}/utils.cpp
 )
-set(OPTIMIZATION_HEADERS
-    ${OPTIMIZATION_PATH}/objective.hpp
+set(OPTIMIZATION_HEADERS_COMMON
     ${OPTIMIZATION_PATH}/optimizer.hpp
     ${OPTIMIZATION_PATH}/utils.hpp
 )
 
-set(SOURCES
-    src/main.cpp
-    ${MAP_SOURCES}
-    ${STATE_SOURCES}
-    ${OPTIMIZATION_SOURCES}
-    ${SCAN_SOURCES}
-)
+# Include directory for source files
+include_directories(src)
 
-set(HEADERS
-    ${MAP_HEADERS}
-    ${STATE_HEADERS}
-    ${OPTIMIZATION_HEADERS}
-    ${SCAN_HEADERS}
-)
-
-# Add the executable
-add_executable(sdf_slam ${SOURCES} ${HEADERS})
-
-# Find PCL
+# Find and include PCL
 find_package(PCL 1.8 REQUIRED)
-
-# Include PCL directories
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-# Link PCL libraries
-target_link_libraries(sdf_slam ${PCL_LIBRARIES})
-
-# Find Eigen3
+# Find and include Eigen3
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
-# Include Eigen3 directories
-target_include_directories(sdf_slam PRIVATE ${EIGEN3_INCLUDE_DIR})
-
-# Link Eigen3 libraries
-target_link_libraries(sdf_slam Eigen3::Eigen)
-
-# Include src directory
-target_include_directories(sdf_slam PRIVATE src)
-
-# Find OpenCV
+# Find and include OpenCV
 find_package(OpenCV REQUIRED)
-
-# Include OpenCV directories
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-# Link OpenCV libraries
-target_link_libraries(sdf_slam ${OpenCV_LIBS})
+# ================================================
+# Target: sdf_slam (Levenberg-Marquardt-based)
+# ================================================
+set(OPTIMIZATION_SOURCES_LM
+    ${OPTIMIZATION_PATH}/objective.cpp
+)
+
+set(OPTIMIZATION_HEADERS_LM
+    ${OPTIMIZATION_PATH}/objective.hpp
+)
+
+# Create executable for sdf_slam (Levenberg-Marquardt)
+add_executable(sdf_slam
+    src/main.cpp
+    ${MAP_SOURCES}
+    ${SCAN_SOURCES}
+    ${STATE_SOURCES}
+    ${OPTIMIZATION_SOURCES_COMMON}
+    ${OPTIMIZATION_SOURCES_LM}
+)
+
+# Include directories for sdf_slam (after target creation)
+target_include_directories(sdf_slam PRIVATE ${EIGEN3_INCLUDE_DIR})
+
+target_link_libraries(sdf_slam
+    ${PCL_LIBRARIES}
+    Eigen3::Eigen
+    ${OpenCV_LIBS}
+)
+
+# ================================================
+# Target: sdf_slam_ceres (Ceres-based)
+# ================================================
+set(OPTIMIZATION_SOURCES_CERES
+    ${OPTIMIZATION_PATH}/objective_ceres.cpp
+)
+
+set(OPTIMIZATION_HEADERS_CERES
+    ${OPTIMIZATION_PATH}/objective_ceres.hpp
+)
+
+# Find and include Ceres
+find_package(Ceres REQUIRED)
+include_directories(${CERES_INCLUDE_DIRS})
+
+# Find glog
+find_package(glog REQUIRED)
+
+# Create executable for sdf_slam_ceres (Ceres-based)
+add_executable(sdf_slam_ceres
+    src/main_ceres.cpp
+    ${MAP_SOURCES}
+    ${SCAN_SOURCES}
+    ${STATE_SOURCES}
+    ${OPTIMIZATION_SOURCES_COMMON}
+    ${OPTIMIZATION_SOURCES_CERES}
+)
+
+# Include directories for sdf_slam_ceres
+target_include_directories(sdf_slam_ceres PRIVATE ${EIGEN3_INCLUDE_DIR})
+
+target_link_libraries(sdf_slam_ceres
+    ${PCL_LIBRARIES}
+    Eigen3::Eigen
+    ${OpenCV_LIBS}
+    Ceres::ceres
+    glog::glog
+)

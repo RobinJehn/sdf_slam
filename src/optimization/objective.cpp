@@ -188,14 +188,6 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
   return 0;
 }
 
-template <int Dim>
-double
-ObjectiveFunctor<Dim>::compute_derivative(int residual_index, int param_index,
-                                          const Eigen::VectorXd &x) const {
-
-  return 0.0;
-}
-
 // Explicit template instantiation
 template class ObjectiveFunctor<2>;
 template class ObjectiveFunctor<3>;

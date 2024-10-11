@@ -91,16 +91,4 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
    * @return int 0 to indicate success
    */
   int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
-
-private:
-  /**
-   * @brief Compute the derivative of the residual with respect to the parameter
-   *
-   * @param residual_index The index of the residual
-   * @param param_index The index of the parameter
-   * @param x The current parameter values
-   * @return double The computed derivative
-   */
-  double compute_derivative(int residual_index, int param_index,
-                            const Eigen::VectorXd &x) const;
 };
