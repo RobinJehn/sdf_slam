@@ -21,12 +21,37 @@ double bisection(std::function<double(double)> func, double a, double b,
 // Function to find intersection points of a line with f(x) = sin(x)
 Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta);
 
-// Function to create a simulated scan of f(x) = sin(x)
+/**
+ * @brief Creates a scan of points in a 2D plane.
+ *
+ * This function generates a point cloud representing a scan from a given
+ * scanner position and orientation. The scan covers a specified angular range
+ * and contains a specified number of points. The point cloud is in the scanner
+ * frame.
+ *
+ * @param scanner_position The position of the scanner in 2D space.
+ * @param theta_scanner The orientation of the scanner in radians.
+ * @param angle_range The total angular range of the scan in radians.
+ * @param num_points The number of points to generate in the scan.
+ *
+ * @return A pointer to the generated point cloud.
+ */
 pcl::PointCloud<pcl::PointXY>::Ptr
 create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
             const double angle_range, const int num_points);
 
-// Function to create two scans
+/**
+ * @brief Create simultated scans
+ *
+ * @param scanner_position_1
+ * @param theta_scanner_1
+ * @param scanner_position_2
+ * @param theta_scanner_2
+ * @param num_points
+ * @param angle_range
+ *
+ * @return Point clouds
+ */
 std::pair<pcl::PointCloud<pcl::PointXY>::Ptr,
           pcl::PointCloud<pcl::PointXY>::Ptr>
 create_scans(const Eigen::Vector2d &scanner_position_1,

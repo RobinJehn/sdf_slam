@@ -4,6 +4,7 @@
 #include <cmath>
 #include <functional>
 #include <iostream>
+#include <pcl/common/transforms.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <random>
@@ -68,7 +69,6 @@ Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta) {
                          laser_path(x0 + max_steps * step));
 }
 
-// Function to create a simulated scan of f(x) = sin(x)
 pcl::PointCloud<pcl::PointXY>::Ptr
 create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
             const double angle_range, const int num_points) {
@@ -87,6 +87,15 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
 
   scan->width = scan->points.size();
   scan->height = 1;
+
+  // Transform the scan into the scanner frame
+  Eigen::Translation<double, 2> translation(scanner_position.x(),
+                                            scanner_position.y());
+  Eigen::Rotation2Dd rotation(theta_scanner);
+  Eigen::Transform<double, 2, Eigen::Affine> transform = translation * rotation;
+
+  pcl::transformPointCloud(*scan, *scan,
+                           transform.inverse().template cast<float>());
 
   return scan;
 }
