@@ -7,6 +7,9 @@ project(sdf_slam VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Option to build tests
+option(BUILD_TESTS "Build the tests" ON)
+
 # Define common variables for build type and paths
 set(CMAKE_BUILD_TYPE Debug)
 set(MAP_PATH src/map)
@@ -67,7 +70,7 @@ set(OPTIMIZATION_HEADERS_LM
 )
 
 # Create executable for sdf_slam (Levenberg-Marquardt-based)
-add_executable(sdf_slam
+add_executable(${PROJECT_NAME}
     src/main.cpp
     ${MAP_SOURCES}
     ${SCAN_SOURCES}
@@ -77,13 +80,13 @@ add_executable(sdf_slam
 )
 
 # Link libraries and include directories for sdf_slam
-target_link_libraries(sdf_slam
+target_link_libraries(${PROJECT_NAME}
     ${PCL_LIBRARIES}
     Eigen3::Eigen
     ${OpenCV_LIBS}
 )
 
-target_include_directories(sdf_slam PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
     src
     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}
@@ -102,7 +105,7 @@ set(OPTIMIZATION_HEADERS_CERES
 )
 
 # Create executable for sdf_slam_ceres (Ceres-based)
-add_executable(sdf_slam_ceres
+add_executable(${PROJECT_NAME}_ceres
     src/main_ceres.cpp
     ${MAP_SOURCES}
     ${SCAN_SOURCES}
@@ -112,7 +115,7 @@ add_executable(sdf_slam_ceres
 )
 
 # Link libraries and include directories for sdf_slam_ceres
-target_link_libraries(sdf_slam_ceres
+target_link_libraries(${PROJECT_NAME}_ceres
     ${PCL_LIBRARIES}
     Eigen3::Eigen
     ${OpenCV_LIBS}
@@ -120,10 +123,18 @@ target_link_libraries(sdf_slam_ceres
     glog::glog
 )
 
-target_include_directories(sdf_slam_ceres PRIVATE
+target_include_directories(${PROJECT_NAME}_ceres PRIVATE
     src
     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${CERES_INCLUDE_DIRS}
 )
+
+# ================================================
+# Add Tests if enabled
+# ================================================
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
