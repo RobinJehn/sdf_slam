@@ -68,7 +68,11 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
     // How the residual changes w.r.t. the transformation
     Eigen::Matrix<double, 1, Dim> dDF_dPoint;
     for (int d = 0; d < Dim; ++d) {
-      dDF_dPoint[d] = derivatives[d].value(point);
+      if (derivatives[d].in_bounds(point)) {
+        dDF_dPoint[d] = derivatives[d].value(point);
+      } else {
+        dDF_dPoint[d] = 0;
+      }
     }
 
     const int points_per_transform = point_value.size() / point_clouds_.size();

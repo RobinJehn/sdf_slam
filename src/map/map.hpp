@@ -22,7 +22,9 @@ public:
    * @brief Get the value at a certain point in the map
    *
    * @param p
+   *
    * @return double
+   * @throws std::out_of_range if the point p is out of bounds
    */
   double value(const Vector &p) const;
 
@@ -56,6 +58,20 @@ public:
   /** Get the value at a certain grid point */
   double get_value_at(const index_t &coords) const;
 
+  /** @brief Get the minimum map value */
+  double get_min_value() const;
+
+  /** @brief Get the maximum map value */
+  double get_max_value() const;
+
+  /**
+   * @brief Check whether p is in bounds of the map
+   *
+   * @param p
+   * @return
+   */
+  bool in_bounds(const Vector &p) const;
+
   /**
    * @brief Compute the derivative of the map
    * This function computes the derivative of the map in each dimension
@@ -69,9 +85,10 @@ public:
   /**
    * @brief Computes the grid indices for a given point in the map.
    *
-   *
    * @param p The point for which the grid indices are to be computed.
+   *
    * @return The grid indices corresponding to the given point.
+   * @throws std::out_of_range if the point p is out of bounds
    */
   index_t get_grid_indices(const Vector &p) const;
 
@@ -88,6 +105,14 @@ private:
   /** Minimum and maximum values in each dimension */
   Vector min_coords_;
   Vector max_coords_;
+
+  /**
+   * @brief Check whether point p is with in the bounds of the map.
+   *
+   * @param p
+   * @throws std::out_of_range if the point p is out of bounds
+   */
+  void check_bounds(const Vector &p) const;
 };
 
 /** Custom hash function for index_t */

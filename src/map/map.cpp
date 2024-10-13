@@ -8,7 +8,7 @@ Map<Dim>::Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
     : num_points_(num_points), min_coords_(min_coords),
       max_coords_(max_coords) {
   for (int i = 0; i < Dim; ++i) {
-    d_[i] = (max_coords[i] - min_coords[i]) / num_points[i];
+    d_[i] = (max_coords[i] - min_coords[i]) / (num_points[i] - 1);
   }
 
   // Initialize grid values to 0
@@ -29,43 +29,74 @@ Map<Dim>::Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
   }
 }
 
+template <int Dim> bool Map<Dim>::in_bounds(const Vector &p) const {
+  const bool x_inbounds = p.x() >= min_coords_[0] && p.x() <= max_coords_[0];
+  const bool y_inbounds = p.y() >= min_coords_[1] && p.y() <= max_coords_[1];
+  if constexpr (Dim == 2) {
+    return x_inbounds && y_inbounds;
+  } else if constexpr (Dim == 3) {
+    const bool z_inbounds = p.z() >= min_coords_[2] && p.z() <= max_coords_[2];
+    return x_inbounds && y_inbounds && z_inbounds;
+  }
+}
+
+template <int Dim> void Map<Dim>::check_bounds(const Vector &p) const {
+  if (p.x() < min_coords_[0] || p.x() > max_coords_[0]) {
+    throw std::out_of_range("Error: x coordinate " + std::to_string(p.x()) +
+                            " is out of range. Valid range is [" +
+                            std::to_string(min_coords_[0]) + ", " +
+                            std::to_string(max_coords_[0]) + "]");
+  }
+  if (p.y() < min_coords_[1] || p.y() > max_coords_[1]) {
+    throw std::out_of_range("Error: y coordinate " + std::to_string(p.y()) +
+                            " is out of range. Valid range is [" +
+                            std::to_string(min_coords_[1]) + ", " +
+                            std::to_string(max_coords_[1]) + "]");
+  }
+  if constexpr (Dim == 3) {
+    if (p.z() < min_coords_[2] || p.z() > max_coords_[2]) {
+      throw std::out_of_range("Error: z coordinate " + std::to_string(p.z()) +
+                              " is out of range. Valid range is [" +
+                              std::to_string(min_coords_[2]) + ", " +
+                              std::to_string(max_coords_[2]) + "]");
+    }
+  }
+}
+
+template <int Dim> double Map<Dim>::get_min_value() const {
+  double min_value = std::numeric_limits<double>::max();
+  for (const auto &entry : grid_values_) {
+    if (entry.second < min_value) {
+      min_value = entry.second;
+    }
+  }
+  return min_value;
+}
+
+template <int Dim> double Map<Dim>::get_max_value() const {
+  double max_value = std::numeric_limits<double>::min();
+  for (const auto &entry : grid_values_) {
+    if (entry.second > max_value) {
+      max_value = entry.second;
+    }
+  }
+  return max_value;
+}
+
 template <int Dim>
 typename Map<Dim>::index_t Map<Dim>::get_grid_indices(const Vector &p) const {
+  check_bounds(p);
+
   if constexpr (Dim == 2) {
     int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
     int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
 
-    if (x < 0 || x >= num_points_[0]) {
-      std::cerr << "Warning: Clamping x coordinate from " << x
-                << " to range [0, " << num_points_[0] - 1 << "]\n";
-      x = std::clamp(x, 0, num_points_[0] - 1);
-    }
-    if (y < 0 || y >= num_points_[1]) {
-      std::cerr << "Warning: Clamping y coordinate from " << y
-                << " to range [0, " << num_points_[1] - 1 << "]\n";
-      y = std::clamp(y, 0, num_points_[1] - 1);
-    }
     return {x, y};
   } else if constexpr (Dim == 3) {
     int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
     int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
     int z = static_cast<int>(floor((p.z() - min_coords_[2]) / d_[2]));
 
-    if (x < 0 || x >= num_points_[0]) {
-      std::cerr << "Warning: Clamping x coordinate from " << x
-                << " to range [0, " << num_points_[0] - 1 << "]\n";
-      x = std::clamp(x, 0, num_points_[0] - 1);
-    }
-    if (y < 0 || y >= num_points_[1]) {
-      std::cerr << "Warning: Clamping y coordinate from " << y
-                << " to range [0, " << num_points_[1] - 1 << "]\n";
-      y = std::clamp(y, 0, num_points_[1] - 1);
-    }
-    if (z < 0 || z >= num_points_[2]) {
-      std::cerr << "Warning: Clamping z coordinate from " << z
-                << " to range [0, " << num_points_[2] - 1 << "]\n";
-      z = std::clamp(z, 0, num_points_[2] - 1);
-    }
     return {x, y, z};
   }
 }
@@ -83,68 +114,54 @@ template <int Dim> double Map<Dim>::value(const Vector &p) const {
   const auto grid_indices = get_grid_indices(p);
 
   if constexpr (Dim == 2) {
-    const int x_index = grid_indices[0];
-    const int y_index = grid_indices[1];
+    int x_index = grid_indices[0];
+    int y_index = grid_indices[1];
 
-    const int x_index_clamped = std::clamp(x_index, 0, num_points_[0] - 2);
-    if (x_index != x_index_clamped) {
-      std::cerr << "Warning: Clamping x index from " << x_index << " to "
-                << x_index_clamped << "\n";
+    // Handle the case where the point is on the edge of the map.
+    if (x_index == num_points_[0] - 1) {
+      x_index = num_points_[0] - 2;
     }
-    const int y_index_clamped = std::clamp(y_index, 0, num_points_[1] - 2);
-    if (y_index != y_index_clamped) {
-      std::cerr << "Warning: Clamping y index from " << y_index << " to "
-                << y_index_clamped << "\n";
+    if (y_index == num_points_[1] - 1) {
+      y_index = num_points_[1] - 2;
     }
 
-    const double c00 = get_value_at({x_index_clamped, y_index_clamped});
-    const double c10 = get_value_at({x_index_clamped + 1, y_index_clamped});
-    const double c01 = get_value_at({x_index_clamped, y_index_clamped + 1});
-    const double c11 = get_value_at({x_index_clamped + 1, y_index_clamped + 1});
+    const double c00 = get_value_at({x_index, y_index});
+    const double c10 = get_value_at({x_index + 1, y_index});
+    const double c01 = get_value_at({x_index, y_index + 1});
+    const double c11 = get_value_at({x_index + 1, y_index + 1});
 
-    const Vector p_floor(x_index_clamped * d_[0], y_index_clamped * d_[1]);
+    const Vector p_floor(x_index * d_[0] + min_coords_.x(),
+                         y_index * d_[1] + min_coords_.y());
 
     return bilinear_interpolation(p, p_floor, d_[0], d_[1], c00, c10, c01, c11);
   } else if constexpr (Dim == 3) {
-    const int x_index = grid_indices[0];
-    const int y_index = grid_indices[1];
-    const int z_index = grid_indices[2];
+    int x_index = grid_indices[0];
+    int y_index = grid_indices[1];
+    int z_index = grid_indices[2];
 
-    const int x_index_clamped = std::clamp(x_index, 0, num_points_[0] - 2);
-    if (x_index != x_index_clamped) {
-      std::cerr << "Warning: Clamping x index from " << x_index << " to "
-                << x_index_clamped << "\n";
+    // Handle the case where the point is on the edge of the map.
+    if (x_index == num_points_[0] - 1) {
+      x_index = num_points_[0] - 2;
     }
-    const int y_index_clamped = std::clamp(y_index, 0, num_points_[1] - 2);
-    if (y_index != y_index_clamped) {
-      std::cerr << "Warning: Clamping y index from " << y_index << " to "
-                << y_index_clamped << "\n";
+    if (y_index == num_points_[1] - 1) {
+      y_index = num_points_[1] - 2;
     }
-    const int z_index_clamped = std::clamp(z_index, 0, num_points_[2] - 2);
-    if (z_index != z_index_clamped) {
-      std::cerr << "Warning: Clamping z index from " << z_index << " to "
-                << z_index_clamped << "\n";
+    if (z_index == num_points_[2] - 1) {
+      z_index = num_points_[2] - 2;
     }
 
-    const double c000 =
-        get_value_at({x_index_clamped, y_index_clamped, z_index_clamped});
-    const double c100 =
-        get_value_at({x_index_clamped + 1, y_index_clamped, z_index_clamped});
-    const double c010 =
-        get_value_at({x_index_clamped, y_index_clamped + 1, z_index_clamped});
-    const double c110 = get_value_at(
-        {x_index_clamped + 1, y_index_clamped + 1, z_index_clamped});
-    const double c001 =
-        get_value_at({x_index_clamped, y_index_clamped, z_index_clamped + 1});
-    const double c101 = get_value_at(
-        {x_index_clamped + 1, y_index_clamped, z_index_clamped + 1});
-    const double c011 = get_value_at(
-        {x_index_clamped, y_index_clamped + 1, z_index_clamped + 1});
-    const double c111 = get_value_at(
-        {x_index_clamped + 1, y_index_clamped + 1, z_index_clamped + 1});
+    const double c000 = get_value_at({x_index, y_index, z_index});
+    const double c100 = get_value_at({x_index + 1, y_index, z_index});
+    const double c010 = get_value_at({x_index, y_index + 1, z_index});
+    const double c110 = get_value_at({x_index + 1, y_index + 1, z_index});
+    const double c001 = get_value_at({x_index, y_index, z_index + 1});
+    const double c101 = get_value_at({x_index + 1, y_index, z_index + 1});
+    const double c011 = get_value_at({x_index, y_index + 1, z_index + 1});
+    const double c111 = get_value_at({x_index + 1, y_index + 1, z_index + 1});
 
-    const Vector p_floor(x_index_clamped * d_[0], y_index_clamped * d_[1],
-                         z_index_clamped * d_[2]);
+    const Vector p_floor(x_index * d_[0] + min_coords_.x(),
+                         y_index * d_[1] + min_coords_.y(),
+                         z_index * d_[2] + min_coords_.z());
 
     return trilinear_interpolation(p, p_floor, d_[0], d_[1], d_[2], c000, c100,
                                    c010, c110, c001, c101, c011, c111);
@@ -152,7 +169,8 @@ template <int Dim> double Map<Dim>::value(const Vector &p) const {
 }
 
 template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
-  // Initialize the derivative maps with the same grid setup as the original map
+  // Initialize the derivative maps with the same grid setup as the original
+  // map
   std::array<Map<Dim>, Dim> derivatives = [this]() {
     if constexpr (Dim == 2) {
       return std::array<Map<Dim>, 2>{
