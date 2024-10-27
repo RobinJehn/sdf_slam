@@ -147,6 +147,26 @@ Eigen::Matrix<double, (1 << Dim), 1>
 get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
                           const Map<Dim> &map);
 
+/** @brief Computes the interpolation values for a given point in a map.
+ *
+ * This function calculates the interpolation indices and corresponding weights
+ * for a point `p` in a map of dimension `Dim`. The interpolation is performed
+ * using a linear method.
+ *
+ * @tparam Dim The dimension of the map.
+ * @param p The point for which interpolation values are to be computed.
+ * @param map The map in which the point `p` is located.
+ * @return A pair consisting of:
+ *         - An array of indices representing the corners of the interpolation
+ * cube.
+ *         - A vector of weights corresponding to each corner.
+ */
+template <int Dim>
+std::pair<std::array<typename Map<Dim>::index_t, (1 << Dim)>,
+          Eigen::Matrix<double, (1 << Dim), 1>>
+get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
+                         const Map<Dim> &map);
+
 template <int Dim>
 std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
 generate_points_and_desired_values(

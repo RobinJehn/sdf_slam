@@ -30,78 +30,148 @@ int ObjectiveFunctor<Dim>::operator()(const Eigen::VectorXd &x,
 }
 
 template <int Dim>
+std::pair<State<Dim>, std::array<Map<Dim>, Dim>>
+ObjectiveFunctor<Dim>::compute_state_and_derivatives(
+    const Eigen::VectorXd &x, const std::array<int, Dim> &num_map_points,
+    const Eigen::Matrix<double, Dim, 1> &min_coords,
+    const Eigen::Matrix<double, Dim, 1> &max_coords) const {
+  State<Dim> state = unflatten<Dim>(x, num_map_points, min_coords, max_coords);
+  std::array<Map<Dim>, Dim> derivatives = state.map_.df();
+  return std::make_pair(state, derivatives);
+}
+
+template <int Dim>
+Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+ObjectiveFunctor<Dim>::compute_transformation_derivative(
+    const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform) const {
+  if constexpr (Dim == 2) {
+    const Eigen::Matrix2d &rotation = transform.rotation();
+    double theta = std::atan2(rotation(1, 0), rotation(0, 0));
+    return compute_transformation_derivative_2d(point, theta);
+  } else if constexpr (Dim == 3) {
+    const Eigen::Matrix3d &rotation = transform.rotation();
+    Eigen::Vector3d euler_angles = rotation.eulerAngles(0, 1, 2);
+    return compute_transformation_derivative_3d(
+        point, euler_angles[0], euler_angles[1], euler_angles[2]);
+  }
+}
+
+template <int Dim>
+void ObjectiveFunctor<Dim>::fill_jacobian_dense(
+    Eigen::MatrixXd &jacobian, const std::array<int, Dim> &num_map_points,
+    int i, const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
+    const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+        &dPoint_dTransformation,
+    const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+    const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+        &interpolation_point_indices,
+    const Eigen::VectorXd &interpolation_weights,
+    const int transformation_index) const {
+  int total_map_points = 1;
+  for (int d = 0; d < Dim; ++d) {
+    total_map_points *= num_map_points[d];
+  }
+  const int offset =
+      total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
+
+  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+      dDF_dPoint * dPoint_dTransformation;
+  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+    jacobian(i, offset + d) = dDF_dTransformation(d);
+  }
+}
+
+template <int Dim>
+void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
+    std::vector<Eigen::Triplet<double>> &jacobian,
+    const std::array<int, Dim> &num_map_points, int i,
+    const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
+    const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+        &dPoint_dTransformation,
+    const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+    const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+        &interpolation_point_indices,
+    const Eigen::VectorXd &interpolation_weights,
+    const int transformation_index) const {
+  int total_map_points = 1;
+  for (int d = 0; d < Dim; ++d) {
+    total_map_points *= num_map_points[d];
+  }
+  const int offset =
+      total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
+
+  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+      dDF_dPoint * dPoint_dTransformation;
+  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+    jacobian.emplace_back(i, offset + d, dDF_dTransformation(d));
+  }
+}
+
+template <int Dim>
 int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
                               Eigen::MatrixXd &jacobian) const {
-  State<Dim> state =
-      unflatten<Dim>(x, num_map_points_, min_coords_, max_coords_);
-  std::array<Map<Dim>, Dim> derivatives = state.map_.df();
-
-  jacobian = Eigen::MatrixXd::Zero(values(), inputs());
+  const auto [state, derivatives] = compute_state_and_derivatives(
+      x, num_map_points_, min_coords_, max_coords_);
+  jacobian.setZero(values(), inputs());
 
   const auto &point_value = generate_points_and_desired_values(
       state, point_clouds_, number_of_points_, both_directions_, step_size_);
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
+    auto [interpolation_indices, interpolation_weights] =
+        get_interpolation_values(point, state.map_);
 
-    // How the distance value changes if I change the map
-    const auto &interpolation_point_indices =
-        get_interpolation_point_indices<Dim>(point, state.map_);
-    const auto &interpolation_weights =
-        get_interpolation_weights<Dim>(point, state.map_);
-    for (int j = 0; j < interpolation_point_indices.size(); ++j) {
-      const auto &index = interpolation_point_indices[j];
-      const int flattened_index =
-          map_index_to_flattened_index<Dim>(num_map_points_, index);
-      const double weight = interpolation_weights[j];
-      jacobian(i, flattened_index) = weight;
-    }
-
-    // How the distance value changes if I change the point
     Eigen::Matrix<double, 1, Dim> dDF_dPoint;
     for (int d = 0; d < Dim; ++d) {
-      if (derivatives[d].in_bounds(point)) {
-        dDF_dPoint[d] = derivatives[d].value(point);
-      } else {
-        dDF_dPoint[d] = 0;
-      }
+      dDF_dPoint[d] =
+          derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
     }
 
-    const int points_per_transform = point_value.size() / point_clouds_.size();
-    const int transformation_index = std::floor(i / points_per_transform);
-    // How the point changes if I change the transformation
-    Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)> dPoint_dTransformation;
-    if constexpr (Dim == 2) {
-      const Eigen::Matrix2d &rotation =
-          state.transformations_[transformation_index].rotation();
-      const double theta = std::atan2(rotation(1, 0), rotation(0, 0));
-      dPoint_dTransformation =
-          compute_transformation_derivative_2d(point, theta);
-    } else if constexpr (Dim == 3) {
-      const Eigen::Matrix3d &rotation =
-          state.transformations_[transformation_index].rotation();
-      const Eigen::Vector3d &euler_angles = rotation.eulerAngles(0, 1, 2);
-      const double theta = euler_angles[0];
-      const double phi = euler_angles[1];
-      const double psi = euler_angles[2];
-      dPoint_dTransformation =
-          compute_transformation_derivative_3d(point, theta, phi, psi);
-    }
+    const int transformation_index =
+        std::floor(i / (point_value.size() / point_clouds_.size()));
+    auto dPoint_dTransformation = compute_transformation_derivative(
+        point, state.transformations_[transformation_index]);
+    fill_jacobian_dense(jacobian, num_map_points_, i, dDF_dPoint,
+                        dPoint_dTransformation, point_clouds_,
+                        interpolation_indices, interpolation_weights,
+                        transformation_index);
+  }
+  return 0;
+}
 
-    Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
-        dDF_dPoint * dPoint_dTransformation;
+template <int Dim>
+int ObjectiveFunctor<Dim>::sparse_df(
+    const Eigen::VectorXd &x, Eigen::SparseMatrix<double> &jacobian) const {
+  const auto [state, derivatives] = compute_state_and_derivatives(
+      x, num_map_points_, min_coords_, max_coords_);
+  std::vector<Eigen::Triplet<double>> tripletList;
 
-    // Fill the Jacobian matrix with the computed derivatives
-    int total_map_points = 1;
+  const auto &point_value = generate_points_and_desired_values(
+      state, point_clouds_, number_of_points_, both_directions_, step_size_);
+  for (int i = 0; i < point_value.size(); ++i) {
+    const auto &[point, desired_value] = point_value[i];
+    auto [interpolation_indices, interpolation_weights] =
+        get_interpolation_values(point, state.map_);
+
+    Eigen::Matrix<double, 1, Dim> dDF_dPoint;
     for (int d = 0; d < Dim; ++d) {
-      total_map_points *= num_map_points_[d];
+      dDF_dPoint[d] =
+          derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
     }
-    const int offset =
-        total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
-    for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
-      jacobian(i, offset + d) = dDF_dTransformation(d);
-    }
+
+    const int transformation_index =
+        std::floor(i / (point_value.size() / point_clouds_.size()));
+    auto dPoint_dTransformation = compute_transformation_derivative(
+        point, state.transformations_[transformation_index]);
+    fill_jacobian_sparse(tripletList, num_map_points_, i, dDF_dPoint,
+                         dPoint_dTransformation, point_clouds_,
+                         interpolation_indices, interpolation_weights,
+                         transformation_index);
   }
 
+  jacobian.resize(values(), inputs());
+  jacobian.setFromTriplets(tripletList.begin(), tripletList.end());
   return 0;
 }
 

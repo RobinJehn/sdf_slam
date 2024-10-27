@@ -254,6 +254,18 @@ get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
 }
 
 template <int Dim>
+std::pair<std::array<typename Map<Dim>::index_t, (1 << Dim)>,
+          Eigen::Matrix<double, (1 << Dim), 1>>
+get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
+                         const Map<Dim> &map) {
+
+  auto interpolation_indices = get_interpolation_point_indices(p, map);
+  auto interpolation_weights = get_interpolation_weights(p, map);
+
+  return {interpolation_indices, interpolation_weights};
+}
+
+template <int Dim>
 Eigen::VectorXd
 objective_vec(const State<Dim> &state,
               const std::vector<pcl::PointCloud<typename std::conditional<
@@ -377,6 +389,16 @@ get_interpolation_weights<2>(const Eigen::Matrix<double, 2, 1> &p,
 template Eigen::Matrix<double, (1 << 3), 1>
 get_interpolation_weights<3>(const Eigen::Matrix<double, 3, 1> &p,
                              const Map<3> &map);
+
+template std::pair<std::array<typename Map<2>::index_t, (1 << 2)>,
+                   Eigen::Matrix<double, (1 << 2), 1>>
+get_interpolation_values<2>(const Eigen::Matrix<double, 2, 1> &p,
+                            const Map<2> &map);
+template std::pair<std::array<typename Map<3>::index_t, (1 << 3)>,
+                   Eigen::Matrix<double, (1 << 3), 1>>
+get_interpolation_values<3>(const Eigen::Matrix<double, 3, 1> &p,
+                            const Map<3> &map);
+
 template Eigen::VectorXd
 objective_vec<2>(const State<2> &state,
                  const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,

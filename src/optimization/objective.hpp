@@ -1,5 +1,7 @@
 #pragma once
+#include "map/map.hpp"
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <array>
 #include <iostream>
 #include <pcl/point_cloud.h>
@@ -40,6 +42,31 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
 
   int operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const;
 
+  /** @brief Computes the sparse Jacobian matrix for a given input vector.
+   *
+   * This function calculates the Jacobian matrix in sparse format for the
+   * provided input vector `x`. The resulting Jacobian is stored in the
+   * `jacobian` parameter.
+   *
+   * @param x The input vector for which the Jacobian is to be computed.
+   * @param jacobian The sparse matrix where the computed Jacobian will be
+   * stored.
+   * @return An integer indicating the success or failure of the computation.
+   */
+  int sparse_df(const Eigen::VectorXd &x,
+                Eigen::SparseMatrix<double> &jacobian) const;
+
+  /**
+   * @brief Compute the partial derivatives of the objective function
+   * (residuals) with respect to each parameter in `x`.
+   *
+   * @param x The current parameter values
+   * @param jacobian The matrix to store the computed partial derivatives
+   * @return int 0 to indicate success
+   */
+  int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
+
+private:
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
   const std::array<int, Dim> num_map_points_;
 
@@ -53,12 +80,107 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   const double step_size_;
 
   /**
-   * @brief Compute the partial derivatives of the objective function
-   * (residuals) with respect to each parameter in `x`.
+   * @brief Computes the derivative of a transformation matrix with respect to a
+   * given point.
    *
-   * @param x The current parameter values
-   * @param jacobian The matrix to store the computed partial derivatives
-   * @return int 0 to indicate success
+   * This function calculates the derivative of the transformation matrix for a
+   * given point and transformation. The size of the resulting matrix depends on
+   * the dimension (Dim) of the input point and transformation.
+   *
+   * @param point The point in space for which the transformation derivative is
+   * computed.
+   * @param transform The affine transformation applied to the point.
+   * @return A matrix representing the derivative of the transformation with
+   * respect to the point.
    */
-  int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
+  Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+  compute_transformation_derivative(
+      const Eigen::Matrix<double, Dim, 1> &point,
+      const Eigen::Transform<double, Dim, Eigen::Affine> &transform) const;
+
+  /** @brief Computes the state and its derivatives for a given dimension.
+   *
+   * This function template calculates the state and its derivatives based on
+   * the specified dimension (Dim). The computation is tailored to the specific
+   * requirements of the optimization process in the SLAM (Simultaneous
+   * Localization and Mapping) context.
+   */
+  std::pair<State<Dim>, std::array<Map<Dim>, Dim>>
+  compute_state_and_derivatives(
+      const Eigen::VectorXd &x, const std::array<int, Dim> &num_map_points,
+      const Eigen::Matrix<double, Dim, 1> &min_coords,
+      const Eigen::Matrix<double, Dim, 1> &max_coords) const;
+
+  /**
+   * @brief Fills the dense Jacobian matrix for the given transformation.
+   *
+   * This function computes and fills the Jacobian matrix for a specific
+   * transformation based on the provided parameters. It uses the derivatives of
+   * the distance function with respect to the point and the point with respect
+   * to the transformation to populate the Jacobian matrix.
+   *
+   * @param jacobian The matrix to be filled with the Jacobian values.
+   * @param num_map_points An array representing the number of map points in
+   * each dimension.
+   * @param i The index of the current point being processed.
+   * @param dDF_dPoint The derivative of the distance function with respect to
+   * the point.
+   * @param dPoint_dTransformation The derivative of the point with respect to
+   * the transformation.
+   * @param point_clouds A vector of point clouds containing the points to be
+   * processed.
+   * @param interpolation_point_indices An array of indices for the
+   * interpolation points.
+   * @param interpolation_weights The weights for the interpolation.
+   * @param transformation_index The index of the transformation being applied.
+   */
+  void fill_jacobian_dense(
+      Eigen::MatrixXd &jacobian, const std::array<int, Dim> &num_map_points,
+      int i, const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
+      const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+          &dPoint_dTransformation,
+      const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+      const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+          &interpolation_point_indices,
+      const Eigen::VectorXd &interpolation_weights,
+      const int transformation_index) const;
+
+  /**
+   * @brief Fills a sparse Jacobian matrix with the provided data.
+   *
+   * This function populates a sparse Jacobian matrix using the provided
+   * parameters, which include the number of map points, derivatives of the
+   * distance function with respect to the point, derivatives of the point with
+   * respect to the transformation, point clouds, interpolation point indices,
+   * interpolation weights, and the transformation index.
+   *
+   * @param jacobian A reference to a vector of Eigen::Triplet<double> to store
+   * the sparse Jacobian entries.
+   * @param num_map_points An array representing the number of map points in
+   * each dimension.
+   * @param i An integer index representing the current point.
+   * @param dDF_dPoint A matrix representing the derivative of the distance
+   * function with respect to the point.
+   * @param dPoint_dTransformation A matrix representing the derivative of the
+   * point with respect to the transformation.
+   * @param point_clouds A vector of point clouds containing the points to be
+   * used in the Jacobian computation.
+   * @param interpolation_point_indices An array of indices representing the
+   * interpolation points.
+   * @param interpolation_weights A vector of weights for the interpolation
+   * points.
+   * @param transformation_index An integer index representing the current
+   * transformation.
+   */
+  void fill_jacobian_sparse(
+      std::vector<Eigen::Triplet<double>> &jacobian,
+      const std::array<int, Dim> &num_map_points, int i,
+      const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
+      const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+          &dPoint_dTransformation,
+      const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+      const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+          &interpolation_point_indices,
+      const Eigen::VectorXd &interpolation_weights,
+      const int transformation_index) const;
 };
