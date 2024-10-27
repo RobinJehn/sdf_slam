@@ -58,28 +58,28 @@ find_package(Ceres REQUIRED)
 find_package(glog REQUIRED)
 
 # ================================================
-# Target: sdf_slam (Levenberg-Marquardt-based)
+# Target: sdf_slam_eigen
 # ================================================
-set(OPTIMIZATION_SOURCES_LM
+set(OPTIMIZATION_SOURCES_EIGEN
     ${OPTIMIZATION_PATH}/optimizer.cpp
     ${OPTIMIZATION_PATH}/objective.cpp
 )
-set(OPTIMIZATION_HEADERS_LM
+set(OPTIMIZATION_HEADERS_EIGEN
     ${OPTIMIZATION_PATH}/optimizer.hpp
     ${OPTIMIZATION_PATH}/objective.hpp
 )
 
-# Create executable for sdf_slam (Levenberg-Marquardt-based)
+# Create executable for sdf_slam_eigen
 add_executable(${PROJECT_NAME}_eigen
     src/main_eigen.cpp
     ${MAP_SOURCES}
     ${SCAN_SOURCES}
     ${STATE_SOURCES}
     ${OPTIMIZATION_SOURCES_COMMON}
-    ${OPTIMIZATION_SOURCES_LM}
+    ${OPTIMIZATION_SOURCES_EIGEN}
 )
 
-# Link libraries and include directories for sdf_slam
+# Link libraries and include directories for sdf_slam_eigen
 target_link_libraries(${PROJECT_NAME}_eigen
     ${PCL_LIBRARIES}
     Eigen3::Eigen
@@ -129,6 +129,41 @@ target_include_directories(${PROJECT_NAME}_ceres PRIVATE
     ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${CERES_INCLUDE_DIRS}
+)
+
+# ================================================
+# Target: sdf_slam
+# ================================================
+set(OPTIMIZATION_SOURCES_LM
+    ${OPTIMIZATION_PATH}/optimizer.cpp
+    ${OPTIMIZATION_PATH}/objective.cpp
+)
+set(OPTIMIZATION_HEADERS_LM
+    ${OPTIMIZATION_PATH}/optimizer.hpp
+    ${OPTIMIZATION_PATH}/objective.hpp
+)
+# Create executable for sdf_slam
+add_executable(${PROJECT_NAME}
+    src/main.cpp
+    ${MAP_SOURCES}
+    ${SCAN_SOURCES}
+    ${STATE_SOURCES}
+    ${OPTIMIZATION_SOURCES_COMMON}
+    ${OPTIMIZATION_SOURCES_LM}
+)
+
+# Link libraries and include directories for sdf_slam
+target_link_libraries(${PROJECT_NAME}
+    ${PCL_LIBRARIES}
+    Eigen3::Eigen
+    ${OpenCV_LIBS}
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    src
+    ${EIGEN3_INCLUDE_DIR}
+    ${PCL_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 # ================================================
