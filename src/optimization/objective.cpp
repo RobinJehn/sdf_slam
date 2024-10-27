@@ -80,6 +80,14 @@ void ObjectiveFunctor<Dim>::fill_jacobian_dense(
   for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
     jacobian(i, offset + d) = dDF_dTransformation(d);
   }
+
+  for (int j = 0; j < interpolation_point_indices.size(); ++j) {
+    const auto &index = interpolation_point_indices[j];
+    const int flattened_index =
+        map_index_to_flattened_index<Dim>(num_map_points_, index);
+    const double weight = interpolation_weights[j];
+    jacobian(i, flattened_index) = weight;
+  }
 }
 
 template <int Dim>
@@ -105,6 +113,14 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
       dDF_dPoint * dPoint_dTransformation;
   for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
     jacobian.emplace_back(i, offset + d, dDF_dTransformation(d));
+  }
+
+  for (int j = 0; j < interpolation_point_indices.size(); ++j) {
+    const auto &index = interpolation_point_indices[j];
+    const int flattened_index =
+        map_index_to_flattened_index<Dim>(num_map_points_, index);
+    const double weight = interpolation_weights[j];
+    jacobian.emplace_back(i, flattened_index, weight);
   }
 }
 
@@ -151,6 +167,9 @@ int ObjectiveFunctor<Dim>::sparse_df(
       state, point_clouds_, number_of_points_, both_directions_, step_size_);
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
+    if (!state.map_.in_bounds(point)) {
+      continue;
+    }
     auto [interpolation_indices, interpolation_weights] =
         get_interpolation_values(point, state.map_);
 
