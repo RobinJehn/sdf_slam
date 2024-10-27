@@ -70,8 +70,8 @@ set(OPTIMIZATION_HEADERS_LM
 )
 
 # Create executable for sdf_slam (Levenberg-Marquardt-based)
-add_executable(${PROJECT_NAME}
-    src/main.cpp
+add_executable(${PROJECT_NAME}_eigen
+    src/main_eigen.cpp
     ${MAP_SOURCES}
     ${SCAN_SOURCES}
     ${STATE_SOURCES}
@@ -80,13 +80,13 @@ add_executable(${PROJECT_NAME}
 )
 
 # Link libraries and include directories for sdf_slam
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}_eigen
     ${PCL_LIBRARIES}
     Eigen3::Eigen
     ${OpenCV_LIBS}
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME}_eigen PRIVATE
     src
     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}
