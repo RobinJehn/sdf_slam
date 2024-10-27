@@ -101,13 +101,13 @@ typename Map<Dim>::index_t Map<Dim>::get_grid_indices(const Vector &p) const {
   }
 }
 
-template <int Dim> double Map<Dim>::get_value_at(const index_t &coords) const {
-  return grid_values_.at(coords);
+template <int Dim> double Map<Dim>::get_value_at(const index_t &index) const {
+  return grid_values_.at(index);
 }
 
 template <int Dim>
-void Map<Dim>::set_value_at(const index_t &coords, const double value) {
-  grid_values_[coords] = value;
+void Map<Dim>::set_value_at(const index_t &index, const double value) {
+  grid_values_[index] = value;
 }
 
 template <int Dim> double Map<Dim>::value(const Vector &p) const {

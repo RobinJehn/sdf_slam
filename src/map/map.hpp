@@ -53,10 +53,10 @@ public:
 
   double get_d(int dim) const { return d_[dim]; }
 
-  void set_value_at(const index_t &coords, const double value);
+  void set_value_at(const index_t &index, const double value);
 
   /** Get the value at a certain grid point */
-  double get_value_at(const index_t &coords) const;
+  double get_value_at(const index_t &index) const;
 
   /** @brief Get the minimum map value */
   double get_min_value() const;
