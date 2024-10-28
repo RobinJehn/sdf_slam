@@ -37,7 +37,7 @@ compute_transformation_derivative_2d(const Eigen::Vector2d &p,
 
   // Rotation derivative w.r.t. theta
   Eigen::Matrix2d dR_dtheta;
-  dR_dtheta << -sin(theta), cos(theta), -cos(theta), -sin(theta);
+  dR_dtheta << -sin(theta), -cos(theta), cos(theta), -sin(theta);
   derivative.col(2) = dR_dtheta * p;
 
   return derivative;
