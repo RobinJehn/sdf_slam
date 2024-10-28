@@ -1,8 +1,232 @@
+#include "optimization/objective.hpp"
 #include "optimization/utils.hpp"
 #include <Eigen/Dense>
 #include <cmath>
 #include <gtest/gtest.h>
-#include <pcl/common/transforms.h> // PCL transform utilities
+#include <pcl/common/transforms.h>
+
+Eigen::Vector2d compute_distance_derivative(const Map<2> &map,
+                                            const Eigen::Vector2d &point) {
+  auto [interpolation_indices, interpolation_weights] =
+      get_interpolation_values<2>(point, map);
+
+  Eigen::Vector2d dDF_dPoint;
+  double dx = map.get_d(0);
+  double dy = map.get_d(1);
+
+  // Compute partial derivative with respect to x
+  double b = interpolation_weights[2] + interpolation_weights[3];
+  dDF_dPoint(0) = ((1 - b) * (map.get_value_at(interpolation_indices[1]) -
+                              map.get_value_at(interpolation_indices[0])) +
+                   b * (map.get_value_at(interpolation_indices[3]) -
+                        map.get_value_at(interpolation_indices[2]))) /
+                  dx;
+
+  // Compute partial derivative with respect to y
+  double a = interpolation_weights[1] + interpolation_weights[3];
+  dDF_dPoint(1) = ((1 - a) * (map.get_value_at(interpolation_indices[2]) -
+                              map.get_value_at(interpolation_indices[0])) +
+                   a * (map.get_value_at(interpolation_indices[3]) -
+                        map.get_value_at(interpolation_indices[1]))) /
+                  dy;
+
+  return dDF_dPoint;
+}
+
+TEST(ObjectiveFunctorTest, DistanceDerivativeTestCustomNumerical) {
+  std::array<int, 2> num_points = {10, 10};
+  Eigen::Vector2d min_coords(0.0, 0.0);
+  Eigen::Vector2d max_coords(10.0, 10.0);
+  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
+  int number_of_points = 100;
+  bool both_directions = true;
+  double step_size = 0.1;
+  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
+                              point_clouds, number_of_points, both_directions,
+                              step_size);
+
+  Map<2> map(num_points, min_coords, max_coords);
+
+  for (int i = 0; i < num_points[0]; ++i) {
+    for (int j = 0; j < num_points[1]; ++j) {
+      Eigen::Vector2d point = {min_coords[0] + i * map.get_d(0),
+                               min_coords[1] + j * map.get_d(1)};
+      map.set_value_at({i, j}, point.norm());
+    }
+  }
+
+  std::array<Map<2>, 2> derivatives = map.df();
+
+  // Define a point to test
+  Eigen::Vector2d point(1.0, 2.0);
+
+  // Step 1: Compute the analytical derivative
+  double epsilon = 1e-6;
+  Eigen::Vector2d numerical_derivative;
+
+  for (int i = 0; i < 2; ++i) {
+    Eigen::Vector2d point_plus = point;
+    Eigen::Vector2d point_minus = point;
+
+    // Perturb the i-th component of the point
+    point_plus[i] += epsilon;
+    point_minus[i] -= epsilon;
+
+    // Compute the distance values at the perturbed points
+    double distance_plus = map.value(point_plus);
+    double distance_minus = map.value(point_minus);
+
+    // Compute the i-th component of the numerical derivative
+    numerical_derivative[i] = (distance_plus - distance_minus) / (2 * epsilon);
+  }
+
+  // Step 2: Compute the numerical derivative using finite differences
+  Eigen::Vector2d custom_derivative = compute_distance_derivative(map, point);
+
+  // Step 3: Compare the analytical and numerical derivatives
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_NEAR(numerical_derivative[i], custom_derivative[i], 1e-5)
+        << "Mismatch at component " << i;
+  }
+}
+
+TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticalCustom) {
+  std::array<int, 2> num_points = {10, 10};
+  Eigen::Vector2d min_coords(0.0, 0.0);
+  Eigen::Vector2d max_coords(10.0, 10.0);
+  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
+  int number_of_points = 100;
+  bool both_directions = true;
+  double step_size = 0.1;
+  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
+                              point_clouds, number_of_points, both_directions,
+                              step_size);
+
+  Map<2> map(num_points, min_coords, max_coords);
+
+  for (int i = 0; i < num_points[0]; ++i) {
+    for (int j = 0; j < num_points[1]; ++j) {
+      Eigen::Vector2d point = {min_coords[0] + i * map.get_d(0),
+                               min_coords[1] + j * map.get_d(1)};
+      map.set_value_at({i, j}, point.norm());
+    }
+  }
+
+  std::array<Map<2>, 2> derivatives = map.df();
+
+  // Define a point to test
+  Eigen::Vector2d point(1.0, 2.0);
+
+  // Step 1: Compute the analytical derivative
+  Eigen::Vector2d analytical_derivative;
+  for (int d = 0; d < 2; ++d) {
+    analytical_derivative[d] =
+        derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
+  }
+
+  // Step 2: Compute the numerical derivative using finite differences
+  Eigen::Vector2d custom_derivative = compute_distance_derivative(map, point);
+
+  // Step 3: Compare the analytical and numerical derivatives
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_NEAR(analytical_derivative[i], custom_derivative[i], 1e-5)
+        << "Mismatch at component " << i;
+  }
+}
+
+TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticalNumerical) {
+  std::array<int, 2> num_points = {10, 10};
+  Eigen::Vector2d min_coords(0.0, 0.0);
+  Eigen::Vector2d max_coords(10.0, 10.0);
+  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
+  int number_of_points = 100;
+  bool both_directions = true;
+  double step_size = 0.1;
+  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
+                              point_clouds, number_of_points, both_directions,
+                              step_size);
+
+  Map<2> map(num_points, min_coords, max_coords);
+
+  for (int i = 0; i < num_points[0]; ++i) {
+    for (int j = 0; j < num_points[1]; ++j) {
+      Eigen::Vector2d point = {min_coords[0] + i * map.get_d(0),
+                               min_coords[1] + j * map.get_d(1)};
+      map.set_value_at({i, j}, point.norm());
+    }
+  }
+
+  std::array<Map<2>, 2> derivatives = map.df();
+
+  // Define a point to test
+  Eigen::Vector2d point(1.0, 2.0);
+
+  // Step 1: Compute the analytical derivative
+  Eigen::Vector2d analytical_derivative;
+  for (int d = 0; d < 2; ++d) {
+    analytical_derivative[d] =
+        derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
+  }
+
+  // Step 2: Compute the numerical derivative using finite differences
+  double epsilon = 1e-6;
+  Eigen::Vector2d numerical_derivative;
+
+  for (int i = 0; i < 2; ++i) {
+    Eigen::Vector2d point_plus = point;
+    Eigen::Vector2d point_minus = point;
+
+    // Perturb the i-th component of the point
+    point_plus[i] += epsilon;
+    point_minus[i] -= epsilon;
+
+    // Compute the distance values at the perturbed points
+    double distance_plus = map.value(point_plus);
+    double distance_minus = map.value(point_minus);
+
+    // Compute the i-th component of the numerical derivative
+    numerical_derivative[i] = (distance_plus - distance_minus) / (2 * epsilon);
+  }
+
+  // Step 3: Compare the analytical and numerical derivatives
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_NEAR(analytical_derivative[i], numerical_derivative[i], 1e-5)
+        << "Mismatch at component " << i;
+  }
+}
+
+TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
+  std::array<int, 2> num_points = {10, 10};
+  Eigen::Vector2d min_coords(0.0, 0.0);
+  Eigen::Vector2d max_coords(10.0, 10.0);
+  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
+  int number_of_points = 100;
+  bool both_directions = true;
+  double step_size = 0.1;
+
+  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
+                              point_clouds, number_of_points, both_directions,
+                              step_size);
+  Eigen::Vector2d point(1.0, 2.0);
+  Eigen::Transform<double, 2, Eigen::Affine> transform =
+      Eigen::Transform<double, 2, Eigen::Affine>::Identity();
+  double theta = M_PI / 4;
+  transform.rotate(Eigen::Rotation2Dd(theta));
+
+  Eigen::Matrix<double, 2, 3> derivative =
+      functor.compute_transformation_derivative(point, transform);
+
+  // Expected derivative
+  Eigen::Matrix<double, 2, 3> expected_derivative =
+      compute_transformation_derivative_2d(point, theta);
+
+  // Test: Compare computed and expected derivatives
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      ASSERT_NEAR(derivative(i, j), expected_derivative(i, j), 1e-6);
+    }
+  }
+}
 
 Eigen::Vector2d transform_2d(const Eigen::Vector2d &p, const double theta) {
   Eigen::Matrix2d rotation;
