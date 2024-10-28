@@ -167,6 +167,24 @@ std::pair<std::array<typename Map<Dim>::index_t, (1 << Dim)>,
 get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
                          const Map<Dim> &map);
 
+/**
+ * @brief Generates a set of points and their corresponding desired values.
+ *
+ * This function generates a specified number of points and their desired values
+ * based on the given state and point clouds. The points are generated in either
+ * one or both directions with a specified step size.
+ *
+ * @tparam Dim The dimensionality of the state and points (2 or 3).
+ * @param state The current state from which points are generated.
+ * @param point_clouds A vector of point clouds in scanner frame used to
+ * generate the points.
+ * @param number_of_points The number of points to generate.
+ * @param both_directions A boolean flag indicating whether to generate points
+ *                        in both directions.
+ * @param step_size The step size used for generating points.
+ * @return A vector of pairs, where each pair consists of a point
+ * (Eigen::Matrix) and its corresponding desired value (double).
+ */
 template <int Dim>
 std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
 generate_points_and_desired_values(

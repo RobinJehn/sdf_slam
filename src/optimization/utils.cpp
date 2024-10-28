@@ -37,7 +37,7 @@ compute_transformation_derivative_2d(const Eigen::Vector2d &p,
 
   // Rotation derivative w.r.t. theta
   Eigen::Matrix2d dR_dtheta;
-  dR_dtheta << -sin(theta), -cos(theta), cos(theta), -sin(theta);
+  dR_dtheta << -sin(theta), cos(theta), -cos(theta), -sin(theta);
   derivative.col(2) = dR_dtheta * p;
 
   return derivative;
@@ -292,42 +292,77 @@ generate_points_and_desired_values(
       point_desired_pairs;
 
   for (size_t i = 0; i < point_clouds.size(); ++i) {
-    const auto &source_cloud = point_clouds[i];
+    const auto &scanner_cloud = point_clouds[i];
+
     pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>
-        transformed_cloud;
-    const auto &transform = state.transformations_[i];
-    pcl::transformPointCloud(source_cloud, transformed_cloud,
-                             transform.template cast<float>());
+        scanner_cloud_with_extra_points;
+    std::vector<double> scanner_cloud_with_extra_points_values;
 
-    for (const auto &point : transformed_cloud) {
-      Eigen::Matrix<double, Dim, 1> point_vector;
-      point_vector[0] = point.x;
-      point_vector[1] = point.y;
-      if constexpr (Dim == 3) {
-        point_vector[2] = point.z;
-      }
-
-      // For point residuals, desired value is 0
-      point_desired_pairs.emplace_back(point_vector, 0.0);
+    for (const auto &point : scanner_cloud) {
+      scanner_cloud_with_extra_points.push_back(point);
+      scanner_cloud_with_extra_points_values.push_back(0.0);
 
       if (number_of_points > 0) {
+        Eigen::Matrix<double, Dim, 1> point_vector;
+        point_vector[0] = point.x;
+        point_vector[1] = point.y;
+        if constexpr (Dim == 3) {
+          point_vector[2] = point.z;
+        }
+
         Eigen::Matrix<double, Dim, 1> vector_to_origin =
             -point_vector.normalized() * step_size;
         int desired_points = number_of_points / (both_directions ? 2 : 1) + 1;
         for (int j = 1; j < desired_points; ++j) {
           Eigen::Matrix<double, Dim, 1> new_point_vector =
               point_vector + vector_to_origin * j;
-          point_desired_pairs.emplace_back(new_point_vector, step_size * j);
+
+          typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type
+              point_plc;
+          point_plc.x = new_point_vector[0];
+          point_plc.y = new_point_vector[1];
+          if constexpr (Dim == 3) {
+            point_plc.z = new_point_vector[2];
+          }
+          scanner_cloud_with_extra_points.push_back(point_plc);
+          scanner_cloud_with_extra_points_values.push_back(step_size * j);
 
           if (both_directions) {
             Eigen::Matrix<double, Dim, 1> new_point_vector_neg =
                 point_vector - vector_to_origin * j;
-            point_desired_pairs.emplace_back(new_point_vector_neg,
-                                             -step_size * j);
+
+            typename std::conditional<Dim == 2, pcl::PointXY,
+                                      pcl::PointXYZ>::type point_plc_neg;
+            point_plc_neg.x = new_point_vector_neg[0];
+            point_plc_neg.y = new_point_vector_neg[1];
+            if constexpr (Dim == 3) {
+              point_plc_neg.z = new_point_vector_neg[2];
+            }
+            scanner_cloud_with_extra_points.push_back(point_plc_neg);
+            scanner_cloud_with_extra_points_values.push_back(-step_size * j);
           }
         }
       }
+    }
+
+    pcl::PointCloud<
+        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>
+        transformed_cloud;
+    const auto &transform = state.transformations_[i];
+    pcl::transformPointCloud(scanner_cloud_with_extra_points, transformed_cloud,
+                             transform.template cast<float>());
+
+    for (int i = 0; i < transformed_cloud.size(); ++i) {
+      auto &point = transformed_cloud[i];
+      Eigen::Matrix<double, Dim, 1> point_vector;
+      point_vector[0] = point.x;
+      point_vector[1] = point.y;
+      if constexpr (Dim == 3) {
+        point_vector[2] = point.z;
+      }
+      point_desired_pairs.emplace_back(
+          point_vector, scanner_cloud_with_extra_points_values[i]);
     }
   }
 
