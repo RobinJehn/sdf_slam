@@ -4,6 +4,7 @@
 #include "optimization/utils.hpp"
 #include "scan/generate.hpp"
 #include "state/state.hpp"
+#include "visualize/utils.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <SuiteSparseQR.hpp>
@@ -49,145 +50,6 @@ void setupScanPositions(double &theta1, double &theta2, Eigen::Vector2d &pos1,
   pos2 = {4, -5};
 }
 
-// Sets up and displays a PCL 3D point cloud visualization
-void display3DPointClouds(const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud1,
-                          const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud2) {
-  pcl::visualization::PCLVisualizer::Ptr viewer(
-      new pcl::visualization::PCLVisualizer("3D Viewer"));
-  viewer->setBackgroundColor(0, 0, 0);
-
-  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cloud1_color(
-      cloud1, 255, 0, 0);
-  viewer->addPointCloud<pcl::PointXYZ>(cloud1, cloud1_color, "cloud1");
-  viewer->setPointCloudRenderingProperties(
-      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud1");
-
-  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cloud2_color(
-      cloud2, 0, 255, 0);
-  viewer->addPointCloud<pcl::PointXYZ>(cloud2, cloud2_color, "cloud2");
-  viewer->setPointCloudRenderingProperties(
-      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud2");
-
-  viewer->addCoordinateSystem(1.0);
-  viewer->initCameraParameters();
-
-  while (!viewer->wasStopped()) {
-    viewer->spinOnce(100);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-}
-
-// Creates a color-mapped OpenCV image from the optimized map
-cv::Mat createColorMappedImage(const Eigen::MatrixXd &optimized_map,
-                               int output_width, int output_height,
-                               double x_min, double x_max, double y_min,
-                               double y_max) {
-  cv::Mat map_image(output_height, output_width, CV_8UC1);
-  double min_value = optimized_map.minCoeff();
-  double max_value = optimized_map.maxCoeff();
-  int map_points_x = optimized_map.rows();
-  int map_points_y = optimized_map.cols();
-
-  // Fill map_image by sampling and scaling optimized_map data
-  for (int i = 0; i < output_height; ++i) {
-    for (int j = 0; j < output_width; ++j) {
-      int map_i = static_cast<int>(i * map_points_x /
-                                   static_cast<double>(output_height));
-      int map_j = static_cast<int>(j * map_points_y /
-                                   static_cast<double>(output_width));
-      double value = optimized_map(map_i, map_j);
-      map_image.at<uchar>(i, j) = static_cast<uchar>(255 * (value - min_value) /
-                                                     (max_value - min_value));
-    }
-  }
-
-  // Apply color mapping
-  cv::Mat color_map_image;
-  cv::applyColorMap(map_image, color_map_image, cv::COLORMAP_JET);
-  return color_map_image;
-}
-
-// Overlays points on the given color-mapped image
-void overlayPoints(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
-                   double x_min, double y_min, double scale_x, double scale_y) {
-  for (const auto &point : points) {
-    int x = static_cast<int>((point.x() - x_min) * scale_x);
-    int y = static_cast<int>((point.y() - y_min) * scale_y);
-    if (x >= 0 && x < image.cols && y >= 0 && y < image.rows) {
-      cv::circle(image, cv::Point(x, y), 1, cv::Scalar(0, 0, 255), -1);
-    }
-  }
-}
-
-// Displays the map in OpenCV
-void displayMapWithPoints(const Eigen::MatrixXd &optimized_map,
-                          const std::vector<Eigen::Vector2d> &points,
-                          int output_width, int output_height, double x_min,
-                          double x_max, double y_min, double y_max) {
-  double scale_x = static_cast<double>(output_width) / (x_max - x_min);
-  double scale_y = static_cast<double>(output_height) / (y_max - y_min);
-
-  cv::Mat color_map_image = createColorMappedImage(
-      optimized_map, output_width, output_height, x_min, x_max, y_min, y_max);
-  overlayPoints(color_map_image, points, x_min, y_min, scale_x, scale_y);
-
-  cv::imshow("Optimized Map with Points", color_map_image);
-  cv::waitKey(0);
-}
-
-// Applies transformations to points based on optimized parameters and prepares
-// visualization
-void visualizeOptimizedMapAndPointClouds(
-    const Eigen::VectorXd &params,
-    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans, int map_points_x,
-    int map_points_y, double x_min, double x_max, double y_min, double y_max,
-    int output_width = 500, int output_height = 500) {
-  State<2> optimized_state = unflatten<2>(params, {map_points_x, map_points_y},
-                                          {x_min, y_min}, {x_max, y_max});
-  Eigen::Transform<double, 2, Eigen::Affine> optimized_frame_1 =
-      optimized_state.transformations_[0];
-  Eigen::Transform<double, 2, Eigen::Affine> optimized_frame_2 =
-      optimized_state.transformations_[1];
-
-  std::vector<Eigen::Vector2d> points;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_scan_1(
-      new pcl::PointCloud<pcl::PointXYZ>());
-  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_scan_2(
-      new pcl::PointCloud<pcl::PointXYZ>());
-
-  for (const auto &point : scans[0]) {
-    Eigen::Vector2d p(point.x, point.y);
-    Eigen::Vector2d transformed_p = optimized_frame_1 * p;
-    transformed_scan_1->push_back(
-        pcl::PointXYZ(static_cast<float>(transformed_p.x()),
-                      static_cast<float>(transformed_p.y()), 0));
-    points.push_back(transformed_p);
-  }
-
-  for (const auto &point : scans[1]) {
-    Eigen::Vector2d p(point.x, point.y);
-    Eigen::Vector2d transformed_p = optimized_frame_2 * p;
-    transformed_scan_2->push_back(
-        pcl::PointXYZ(static_cast<float>(transformed_p.x()),
-                      static_cast<float>(transformed_p.y()), 0));
-    points.push_back(transformed_p);
-  }
-
-  // Generate and display the map image
-  Eigen::MatrixXd optimized_map(map_points_x, map_points_y);
-  int index = 0;
-  for (int x = 0; x < map_points_x; ++x) {
-    for (int y = 0; y < map_points_y; ++y) {
-      optimized_map(y, x) = std::max(-3.0, std::min(3.0, params(index++)));
-    }
-  }
-  displayMapWithPoints(optimized_map, points, output_width, output_height,
-                       x_min, x_max, y_min, y_max);
-
-  // Display the transformed point clouds
-  // display3DPointClouds(transformed_scan_1, transformed_scan_2);
-}
-
 // Runs the optimization process
 void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,
                      cholmod_common &c,
@@ -196,8 +58,8 @@ void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
   double lambda = 1;
-  int max_iters = 100;
-  double tolerance = 1e-10;
+  int max_iters = 20;
+  double tolerance = 1e-5;
 
   for (int iter = 0; iter < max_iters; ++iter) {
     functor.sparse_df(params, jacobian_sparse);
@@ -256,8 +118,8 @@ void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,
     cholmod_free_sparse(&cholmod_lm_matrix, &c);
 
     if (visualize) {
-      visualizeOptimizedMapAndPointClouds(
-          params, scans, map_points_x, map_points_y, -3, 2 * M_PI + 3, -8, 4);
+      visualizeMap(params, scans, {map_points_x, map_points_y}, {-3, -8},
+                   {2 * M_PI + 3, 4});
     }
   }
 }
@@ -276,7 +138,7 @@ int main() {
 
   // Initialize the map and set up the optimization parameters
   Map<2> map =
-      init_map(-3, 2 * M_PI + 3, -8, 4, map_points_x, map_points_y, true);
+      init_map(-3, 2 * M_PI + 3, -8, 4, map_points_x, map_points_y, false);
   ObjectiveFunctor<2> functor(6 + map_points_x * map_points_y,
                               (scans.first->size() + scans.second->size()) * 21,
                               {map_points_x, map_points_y}, {-3, -8},
@@ -296,8 +158,8 @@ int main() {
   cholmod_finish(&c);
 
   // Visualize the optimized map and transformed point clouds
-  visualizeOptimizedMapAndPointClouds(params, point_clouds, map_points_x,
-                                      map_points_y, -3, 2 * M_PI + 3, -8, 4);
+  visualizeMap(params, point_clouds, {map_points_x, map_points_y}, {-3, -8},
+               {2 * M_PI + 3, 4});
 
   return 0;
 }
