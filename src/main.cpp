@@ -6,6 +6,7 @@
 #include "state/state.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <SuiteSparseQR.hpp>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <pcl/visualization/pcl_visualizer.h>
