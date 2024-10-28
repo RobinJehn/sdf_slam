@@ -7,10 +7,6 @@ project(test_deriv)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find and include Eigen and PCL
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(PCL 1.8 REQUIRED)
-
 # Download and unpack GoogleTest at configure time
 include(FetchContent)
 FetchContent_Declare(
@@ -22,8 +18,9 @@ FetchContent_MakeAvailable(googletest)
 # Enable GoogleTest framework
 enable_testing()
 
-# Set GoogleTest's libraries correctly
-set(GTEST_LIBS gtest gtest_main)
+# Find and include Eigen and PCL
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(PCL 1.8 REQUIRED)
 
 # Add the source files that are necessary for testing
 set(OPTIMIZATION_SOURCES
@@ -48,9 +45,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # Link libraries to the test target
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ${GTEST_LIBS}        # GoogleTest libraries
-        Eigen3::Eigen        # Eigen library
-        ${PCL_LIBRARIES}     # PCL libraries
+    GTest::gtest_main
+    Eigen3::Eigen # Eigen library
+    ${PCL_LIBRARIES} # PCL libraries
 )
 
 # Discover and register GoogleTest tests
