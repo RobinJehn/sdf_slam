@@ -5,35 +5,7 @@
 #include <gtest/gtest.h>
 #include <pcl/common/transforms.h>
 
-Eigen::Vector2d compute_distance_derivative(const Map<2> &map,
-                                            const Eigen::Vector2d &point) {
-  auto [interpolation_indices, interpolation_weights] =
-      get_interpolation_values<2>(point, map);
-
-  Eigen::Vector2d dDF_dPoint;
-  double dx = map.get_d(0);
-  double dy = map.get_d(1);
-
-  // Compute partial derivative with respect to x
-  double b = interpolation_weights[2] + interpolation_weights[3];
-  dDF_dPoint(0) = ((1 - b) * (map.get_value_at(interpolation_indices[1]) -
-                              map.get_value_at(interpolation_indices[0])) +
-                   b * (map.get_value_at(interpolation_indices[3]) -
-                        map.get_value_at(interpolation_indices[2]))) /
-                  dx;
-
-  // Compute partial derivative with respect to y
-  double a = interpolation_weights[1] + interpolation_weights[3];
-  dDF_dPoint(1) = ((1 - a) * (map.get_value_at(interpolation_indices[2]) -
-                              map.get_value_at(interpolation_indices[0])) +
-                   a * (map.get_value_at(interpolation_indices[3]) -
-                        map.get_value_at(interpolation_indices[1]))) /
-                  dy;
-
-  return dDF_dPoint;
-}
-
-TEST(ObjectiveFunctorTest, DistanceDerivativeTestCustomNumerical) {
+TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
   std::array<int, 2> num_points = {10, 10};
   Eigen::Vector2d min_coords(0.0, 0.0);
   Eigen::Vector2d max_coords(10.0, 10.0);
@@ -60,7 +32,7 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestCustomNumerical) {
   // Define a point to test
   Eigen::Vector2d point(1.0, 2.0);
 
-  // Step 1: Compute the analytical derivative
+  // numerical derivative
   double epsilon = 1e-6;
   Eigen::Vector2d numerical_derivative;
 
@@ -80,17 +52,17 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestCustomNumerical) {
     numerical_derivative[i] = (distance_plus - distance_minus) / (2 * epsilon);
   }
 
-  // Step 2: Compute the numerical derivative using finite differences
-  Eigen::Vector2d custom_derivative = compute_distance_derivative(map, point);
+  // analytical derivative
+  Eigen::Vector2d analytic_derivative =
+      compute_analytical_derivative<2>(map, point);
 
-  // Step 3: Compare the analytical and numerical derivatives
   for (int i = 0; i < 2; ++i) {
-    EXPECT_NEAR(numerical_derivative[i], custom_derivative[i], 1e-5)
+    EXPECT_NEAR(numerical_derivative[i], analytic_derivative[i], 1e-5)
         << "Mismatch at component " << i;
   }
 }
 
-TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticalCustom) {
+TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
   std::array<int, 2> num_points = {10, 10};
   Eigen::Vector2d min_coords(0.0, 0.0);
   Eigen::Vector2d max_coords(10.0, 10.0);
@@ -117,24 +89,24 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticalCustom) {
   // Define a point to test
   Eigen::Vector2d point(1.0, 2.0);
 
-  // Step 1: Compute the analytical derivative
-  Eigen::Vector2d analytical_derivative;
+  // approximate_derivative
+  Eigen::Vector2d approximate_derivative;
   for (int d = 0; d < 2; ++d) {
-    analytical_derivative[d] =
+    approximate_derivative[d] =
         derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
   }
 
-  // Step 2: Compute the numerical derivative using finite differences
-  Eigen::Vector2d custom_derivative = compute_distance_derivative(map, point);
+  // analytical_derivative
+  Eigen::Vector2d analytical_derivative =
+      compute_analytical_derivative<2>(map, point);
 
-  // Step 3: Compare the analytical and numerical derivatives
   for (int i = 0; i < 2; ++i) {
-    EXPECT_NEAR(analytical_derivative[i], custom_derivative[i], 1e-5)
+    EXPECT_NEAR(analytical_derivative[i], approximate_derivative[i], 1e-5)
         << "Mismatch at component " << i;
   }
 }
 
-TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticalNumerical) {
+TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
   std::array<int, 2> num_points = {10, 10};
   Eigen::Vector2d min_coords(0.0, 0.0);
   Eigen::Vector2d max_coords(10.0, 10.0);

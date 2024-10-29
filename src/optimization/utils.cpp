@@ -395,6 +395,87 @@ Eigen::VectorXd compute_residuals(
   return residuals;
 }
 
+template <int Dim>
+Eigen::Matrix<double, Dim, 1>
+compute_analytical_derivative(const Map<Dim> &map,
+                              const Eigen::Matrix<double, Dim, 1> &point) {
+  const auto [interpolation_indices, interpolation_weights] =
+      get_interpolation_values<Dim>(point, map);
+
+  std::array<double, Dim> d_values;
+  for (int i = 0; i < Dim; ++i) {
+    d_values[i] = map.get_d(i);
+  }
+
+  Eigen::Matrix<double, Dim, 1> dDF_dPoint;
+  if constexpr (Dim == 2) {
+    // 2D case
+    const double dx = d_values[0];
+    const double dy = d_values[1];
+
+    const double b = interpolation_weights[2] + interpolation_weights[3];
+    dDF_dPoint(0) = ((1 - b) * (map.get_value_at(interpolation_indices[1]) -
+                                map.get_value_at(interpolation_indices[0])) +
+                     b * (map.get_value_at(interpolation_indices[3]) -
+                          map.get_value_at(interpolation_indices[2]))) /
+                    dx;
+
+    const double a = interpolation_weights[1] + interpolation_weights[3];
+    dDF_dPoint(1) = ((1 - a) * (map.get_value_at(interpolation_indices[2]) -
+                                map.get_value_at(interpolation_indices[0])) +
+                     a * (map.get_value_at(interpolation_indices[3]) -
+                          map.get_value_at(interpolation_indices[1]))) /
+                    dy;
+  } else if constexpr (Dim == 3) {
+    // 3D case
+    const double dx = d_values[0];
+    const double dy = d_values[1];
+    const double dz = d_values[2];
+
+    const double c = interpolation_weights[4] + interpolation_weights[5] +
+                     interpolation_weights[6] + interpolation_weights[7];
+    dDF_dPoint(0) = ((1 - c) * (map.get_value_at(interpolation_indices[1]) -
+                                map.get_value_at(interpolation_indices[0])) +
+                     c * (map.get_value_at(interpolation_indices[5]) -
+                          map.get_value_at(interpolation_indices[4]))) /
+                    dx;
+
+    const double b = interpolation_weights[2] + interpolation_weights[3] +
+                     interpolation_weights[6] + interpolation_weights[7];
+    dDF_dPoint(1) = ((1 - b) * (map.get_value_at(interpolation_indices[2]) -
+                                map.get_value_at(interpolation_indices[0])) +
+                     b * (map.get_value_at(interpolation_indices[6]) -
+                          map.get_value_at(interpolation_indices[4]))) /
+                    dy;
+
+    const double a = interpolation_weights[1] + interpolation_weights[3] +
+                     interpolation_weights[5] + interpolation_weights[7];
+    dDF_dPoint(2) = ((1 - a) * (map.get_value_at(interpolation_indices[4]) -
+                                map.get_value_at(interpolation_indices[0])) +
+                     a * (map.get_value_at(interpolation_indices[7]) -
+                          map.get_value_at(interpolation_indices[5]))) /
+                    dz;
+  }
+
+  return dDF_dPoint;
+}
+
+template <int Dim>
+Eigen::Matrix<double, Dim, 1>
+compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
+                               const Eigen::Matrix<double, Dim, 1> &point) {
+  Eigen::Matrix<double, 1, Dim> dDF_dPoint;
+  for (int d = 0; d < Dim; ++d) {
+    if (derivatives[d].in_bounds(point)) {
+      dDF_dPoint[d] = derivatives[d].value(point);
+    } else {
+      dDF_dPoint[d] = 0;
+    }
+  }
+
+  return dDF_dPoint;
+}
+
 // Explicit template instantiation
 template Eigen::VectorXd flatten<2>(const State<2> &state);
 template Eigen::VectorXd flatten<3>(const State<3> &state);
@@ -444,3 +525,17 @@ template Eigen::VectorXd objective_vec<3>(
     const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
     const int number_of_points, const bool both_directions,
     const double step_size);
+
+template Eigen::Matrix<double, 2, 1>
+compute_analytical_derivative<2>(const Map<2> &map,
+                                 const Eigen::Matrix<double, 2, 1> &point);
+template Eigen::Matrix<double, 3, 1>
+compute_analytical_derivative<3>(const Map<3> &map,
+                                 const Eigen::Matrix<double, 3, 1> &point);
+
+template Eigen::Matrix<double, 2, 1>
+compute_approximate_derivative<2>(const std::array<Map<2>, 2> &derivatives,
+                                  const Eigen::Matrix<double, 2, 1> &point);
+template Eigen::Matrix<double, 3, 1>
+compute_approximate_derivative<3>(const std::array<Map<3>, 3> &derivatives,
+                                  const Eigen::Matrix<double, 3, 1> &point);

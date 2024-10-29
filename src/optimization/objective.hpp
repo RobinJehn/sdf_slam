@@ -66,19 +66,6 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
    */
   int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
 
-private:
-  const std::vector<pcl::PointCloud<PointType>> point_clouds_;
-  const std::array<int, Dim> num_map_points_;
-
-  /** Minimum and maximum values in each dimension */
-  const Vector min_coords_;
-  const Vector max_coords_;
-
-  /** Parameters for point line residuals */
-  const int number_of_points_;
-  const bool both_directions_;
-  const double step_size_;
-
   /**
    * @brief Computes the derivative of a transformation matrix with respect to a
    * given point.
@@ -97,6 +84,19 @@ private:
   compute_transformation_derivative(
       const Eigen::Matrix<double, Dim, 1> &point,
       const Eigen::Transform<double, Dim, Eigen::Affine> &transform) const;
+
+private:
+  const std::vector<pcl::PointCloud<PointType>> point_clouds_;
+  const std::array<int, Dim> num_map_points_;
+
+  /** Minimum and maximum values in each dimension */
+  const Vector min_coords_;
+  const Vector max_coords_;
+
+  /** Parameters for point line residuals */
+  const int number_of_points_;
+  const bool both_directions_;
+  const double step_size_;
 
   /** @brief Computes the state and its derivatives for a given dimension.
    *

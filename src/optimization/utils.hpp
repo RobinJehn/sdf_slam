@@ -211,3 +211,31 @@ objective_vec(const State<Dim> &state,
                   Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
               const int number_of_points, const bool both_directions,
               const double step_size);
+
+/**
+ * @brief Compute the analytical derivative of a map at a given point with
+ * respect to the point.
+ *
+ * @tparam Dim
+ * @param map
+ * @param point Point at which to get the derivative
+ * @return dDF_dPoint
+ */
+template <int Dim>
+Eigen::Matrix<double, Dim, 1>
+compute_analytical_derivative(const Map<Dim> &map,
+                              const Eigen::Matrix<double, Dim, 1> &point);
+
+/**
+ * @brief Approximate the derivative with respect to the point by interpolating
+ * the derivative values at the nearest grid points.
+ *
+ * @tparam Dim
+ * @param derivatives Derivative with respect to each dimension
+ * @param point Point at which to get the derivative
+ * @return dDF_dPoint
+ */
+template <int Dim>
+Eigen::Matrix<double, Dim, 1>
+compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
+                               const Eigen::Matrix<double, Dim, 1> &point);
