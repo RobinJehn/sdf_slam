@@ -66,25 +66,6 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
    */
   int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
 
-  /**
-   * @brief Computes the derivative of a transformation matrix with respect to a
-   * given point.
-   *
-   * This function calculates the derivative of the transformation matrix for a
-   * given point and transformation. The size of the resulting matrix depends on
-   * the dimension (Dim) of the input point and transformation.
-   *
-   * @param point The point in space for which the transformation derivative is
-   * computed.
-   * @param transform The affine transformation applied to the point.
-   * @return A matrix representing the derivative of the transformation with
-   * respect to the point.
-   */
-  Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
-  compute_transformation_derivative(
-      const Eigen::Matrix<double, Dim, 1> &point,
-      const Eigen::Transform<double, Dim, Eigen::Affine> &transform) const;
-
 private:
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
   const std::array<int, Dim> num_map_points_;

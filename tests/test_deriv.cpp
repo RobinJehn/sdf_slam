@@ -186,7 +186,7 @@ TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
   transform.rotate(Eigen::Rotation2Dd(theta));
 
   Eigen::Matrix<double, 2, 3> derivative =
-      functor.compute_transformation_derivative(point, transform);
+      compute_transformation_derivative<2>(point, transform);
 
   // Expected derivative
   Eigen::Matrix<double, 2, 3> expected_derivative =

@@ -27,6 +27,31 @@ compute_transformation_derivative_3d(const Eigen::Vector3d &p,
   return derivative;
 }
 
+Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(
+    const Eigen::Vector3d &p, const double theta, const double phi,
+    const double psi) {
+  Eigen::Matrix<double, 3, 6> derivative;
+
+  // Translation derivatives
+  derivative.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
+
+  // Numerical approximation of rotation derivatives
+  const double epsilon = 1e-6;
+
+  auto numerical_derivative = [&](auto dR_func) {
+    Eigen::Matrix3d R = dR_func(theta, phi, psi);
+    Eigen::Matrix3d R_plus = dR_func(theta + epsilon, phi, psi);
+    Eigen::Matrix3d R_minus = dR_func(theta - epsilon, phi, psi);
+    return (R_plus - R_minus) / (2 * epsilon) * p;
+  };
+
+  derivative.col(3) = numerical_derivative(dR_dtheta);
+  derivative.col(4) = numerical_derivative(dR_dphi);
+  derivative.col(5) = numerical_derivative(dR_dpsi);
+
+  return derivative;
+}
+
 Eigen::Matrix<double, 2, 3>
 compute_transformation_derivative_2d(const Eigen::Vector2d &p,
                                      const double theta) {
@@ -39,6 +64,28 @@ compute_transformation_derivative_2d(const Eigen::Vector2d &p,
   Eigen::Matrix2d dR_dtheta;
   dR_dtheta << -sin(theta), -cos(theta), cos(theta), -sin(theta);
   derivative.col(2) = dR_dtheta * p;
+
+  return derivative;
+}
+
+Eigen::Matrix<double, 2, 3>
+compute_transformation_derivative_2d_numerical(const Eigen::Vector2d &p,
+                                               const double theta) {
+  Eigen::Matrix<double, 2, 3> derivative;
+
+  // Translation derivatives
+  derivative.block<2, 2>(0, 0) = Eigen::Matrix2d::Identity();
+
+  // Numerical approximation of rotation derivative w.r.t. theta
+  const double epsilon = 1e-6;
+  Eigen::Matrix2d R = Eigen::Rotation2Dd(theta).toRotationMatrix();
+  Eigen::Matrix2d R_plus =
+      Eigen::Rotation2Dd(theta + epsilon).toRotationMatrix();
+  Eigen::Matrix2d R_minus =
+      Eigen::Rotation2Dd(theta - epsilon).toRotationMatrix();
+  Eigen::Matrix2d dR_dtheta_numerical = (R_plus - R_minus) / (2 * epsilon);
+
+  derivative.col(2) = dR_dtheta_numerical * p;
 
   return derivative;
 }
@@ -476,6 +523,31 @@ compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
   return dDF_dPoint;
 }
 
+template <int Dim>
+Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+compute_transformation_derivative(
+    const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
+    const bool numerical) {
+  if constexpr (Dim == 2) {
+    const Eigen::Matrix2d &rotation = transform.rotation();
+    double theta = std::atan2(rotation(1, 0), rotation(0, 0));
+    if (numerical) {
+      return compute_transformation_derivative_2d_numerical(point, theta);
+    }
+    return compute_transformation_derivative_2d(point, theta);
+  } else if constexpr (Dim == 3) {
+    const Eigen::Matrix3d &rotation = transform.rotation();
+    Eigen::Vector3d euler_angles = rotation.eulerAngles(0, 1, 2);
+    if (numerical) {
+      return compute_transformation_derivative_3d_numerical(
+          point, euler_angles[0], euler_angles[1], euler_angles[2]);
+    }
+    return compute_transformation_derivative_3d(
+        point, euler_angles[0], euler_angles[1], euler_angles[2]);
+  }
+}
+
 // Explicit template instantiation
 template Eigen::VectorXd flatten<2>(const State<2> &state);
 template Eigen::VectorXd flatten<3>(const State<3> &state);
@@ -539,3 +611,12 @@ compute_approximate_derivative<2>(const std::array<Map<2>, 2> &derivatives,
 template Eigen::Matrix<double, 3, 1>
 compute_approximate_derivative<3>(const std::array<Map<3>, 3> &derivatives,
                                   const Eigen::Matrix<double, 3, 1> &point);
+
+template Eigen::Matrix<double, 2, 3> compute_transformation_derivative<2>(
+    const Eigen::Matrix<double, 2, 1> &point,
+    const Eigen::Transform<double, 2, Eigen::Affine> &transform,
+    const bool numerical);
+template Eigen::Matrix<double, 3, 6> compute_transformation_derivative<3>(
+    const Eigen::Matrix<double, 3, 1> &point,
+    const Eigen::Transform<double, 3, Eigen::Affine> &transform,
+    const bool numerical);

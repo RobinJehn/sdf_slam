@@ -41,23 +41,6 @@ ObjectiveFunctor<Dim>::compute_state_and_derivatives(
 }
 
 template <int Dim>
-Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
-ObjectiveFunctor<Dim>::compute_transformation_derivative(
-    const Eigen::Matrix<double, Dim, 1> &point,
-    const Eigen::Transform<double, Dim, Eigen::Affine> &transform) const {
-  if constexpr (Dim == 2) {
-    const Eigen::Matrix2d &rotation = transform.rotation();
-    double theta = std::atan2(rotation(1, 0), rotation(0, 0));
-    return compute_transformation_derivative_2d(point, theta);
-  } else if constexpr (Dim == 3) {
-    const Eigen::Matrix3d &rotation = transform.rotation();
-    Eigen::Vector3d euler_angles = rotation.eulerAngles(0, 1, 2);
-    return compute_transformation_derivative_3d(
-        point, euler_angles[0], euler_angles[1], euler_angles[2]);
-  }
-}
-
-template <int Dim>
 void ObjectiveFunctor<Dim>::fill_jacobian_dense(
     Eigen::MatrixXd &jacobian, const std::array<int, Dim> &num_map_points,
     int i, const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
@@ -138,15 +121,12 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
     auto [interpolation_indices, interpolation_weights] =
         get_interpolation_values(point, state.map_);
 
-    Eigen::Matrix<double, 1, Dim> dDF_dPoint;
-    for (int d = 0; d < Dim; ++d) {
-      dDF_dPoint[d] =
-          derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
-    }
+    Eigen::Matrix<double, 1, Dim> dDF_dPoint =
+        compute_approximate_derivative<Dim>(derivatives, point);
 
     const int transformation_index =
         std::floor(i / (point_value.size() / point_clouds_.size()));
-    auto dPoint_dTransformation = compute_transformation_derivative(
+    auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
         point, state.transformations_[transformation_index]);
     fill_jacobian_dense(jacobian, num_map_points_, i, dDF_dPoint,
                         dPoint_dTransformation, point_clouds_,
@@ -181,7 +161,7 @@ int ObjectiveFunctor<Dim>::sparse_df(
 
     const int transformation_index =
         std::floor(i / (point_value.size() / point_clouds_.size()));
-    auto dPoint_dTransformation = compute_transformation_derivative(
+    auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
         point, state.transformations_[transformation_index]);
     fill_jacobian_sparse(tripletList, num_map_points_, i, dDF_dPoint,
                          dPoint_dTransformation, point_clouds_,

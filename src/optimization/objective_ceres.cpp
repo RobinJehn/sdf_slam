@@ -44,7 +44,7 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
 
   // Compute the Jacobian matrix using the derivatives of the map and
   // transformation
-  std::array<Map<Dim>, Dim> derivatives = state.map_.df();
+  // std::array<Map<Dim>, Dim> derivatives = state.map_.df();
   jacobian = Eigen::MatrixXd::Zero(num_outputs(), num_inputs());
 
   const auto &point_value = generate_points_and_desired_values<Dim>(
@@ -72,23 +72,10 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
     const int points_per_transform = point_value.size() / point_clouds_.size();
     const int transformation_index = std::floor(i / points_per_transform);
 
-    Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)> dPoint_dTransformation;
-    if constexpr (Dim == 2) {
-      const Eigen::Matrix2d &rotation =
-          state.transformations_[transformation_index].rotation();
-      const double theta = std::atan2(rotation(1, 0), rotation(0, 0));
-      dPoint_dTransformation =
-          compute_transformation_derivative_2d(point, theta);
-    } else if constexpr (Dim == 3) {
-      const Eigen::Matrix3d &rotation =
-          state.transformations_[transformation_index].rotation();
-      const Eigen::Vector3d &euler_angles = rotation.eulerAngles(0, 1, 2);
-      const double theta = euler_angles[0];
-      const double phi = euler_angles[1];
-      const double psi = euler_angles[2];
-      dPoint_dTransformation =
-          compute_transformation_derivative_3d(point, theta, phi, psi);
-    }
+    Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+        dPoint_dTransformation = compute_transformation_derivative<Dim>(
+            point, state.transformations_[transformation_index],
+            /** numerical */ true);
 
     Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
         dDF_dPoint * dPoint_dTransformation;

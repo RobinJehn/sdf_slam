@@ -239,3 +239,58 @@ template <int Dim>
 Eigen::Matrix<double, Dim, 1>
 compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
                                const Eigen::Matrix<double, Dim, 1> &point);
+
+/**
+ * @brief Computes the derivative of a transformation matrix with respect to a
+ * given point.
+ *
+ * @param point The point in space for which the transformation derivative is
+ * computed.
+ * @param transform The affine transformation applied to the point.
+ * @param numerical If true, the derivative is computed numerically.
+ */
+template <int Dim>
+Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+compute_transformation_derivative(
+    const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
+    const bool numerical = false);
+
+/**
+ * @brief Computes the derivative of a 3D transformation.
+ * Assumes R = Rz(psi) * Ry(phi) * Rx(theta)
+ *
+ * @param p Point at which to compute the derivative.
+ * @param theta Rotation angle around the x-axis.
+ * @param phi Rotation angle around the y-axis.
+ * @param psi Rotation angle around the z-axis.
+ * @return Eigen::Matrix<double, 3, 6> A matrix representing the derivative of
+ *         the transformation. The columns of the matrix represent:
+ *         - Column 0: Derivative with respect to x translation.
+ *         - Column 1: Derivative with respect to y translation.
+ *         - Column 2: Derivative with respect to z translation.
+ *         - Column 3: Derivative with respect to rotation around the x-axis
+ * (theta).
+ *         - Column 4: Derivative with respect to rotation around the y-axis
+ * (phi).
+ *         - Column 5: Derivative with respect to rotation around the z-axis
+ * (psi).
+ */
+Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(
+    const Eigen::Vector3d &p, const double theta, const double phi,
+    const double psi);
+
+/**
+ * @brief Computes the derivative of a 2D transformation.
+ *
+ * @param p Point at which to compute the derivative
+ * @param theta Rotation angle
+ * @return Eigen::Matrix<double, 2, 3> A matrix representing the derivative of
+ *         the transformation. The columns of the matrix represent:
+ *         - Column 0: Derivative with respect to x translation
+ *         - Column 1: Derivative with respect to y translation
+ *         - Column 2: Derivative with respect to rotation (theta)
+ */
+Eigen::Matrix<double, 2, 3>
+compute_transformation_derivative_2d_numerical(const Eigen::Vector2d &p,
+                                               const double theta);
