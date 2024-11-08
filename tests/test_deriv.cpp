@@ -167,6 +167,29 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
   }
 }
 
+TEST(ObjectiveFunctorTest,
+     ComputeTransformationDerivative2DNumericalVsAnalytic) {
+  Eigen::Vector2d point(1.0, 2.0);
+  Eigen::Transform<double, 2, Eigen::Affine> transform =
+      Eigen::Transform<double, 2, Eigen::Affine>::Identity();
+  double theta = M_PI / 4;
+  transform.rotate(Eigen::Rotation2Dd(theta));
+
+  Eigen::Matrix<double, 2, 3> analytical_derivative =
+      compute_transformation_derivative<2>(point, transform);
+
+  Eigen::Matrix<double, 2, 3> numerical_derivative =
+      compute_transformation_derivative<2>(point, transform,
+                                           /* numerical */ true);
+
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      EXPECT_NEAR(analytical_derivative(i, j), numerical_derivative(i, j),
+                  1e-6);
+    }
+  }
+}
+
 TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
   std::array<int, 2> num_points = {10, 10};
   Eigen::Vector2d min_coords(0.0, 0.0);
