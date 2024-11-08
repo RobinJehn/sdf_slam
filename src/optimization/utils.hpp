@@ -168,13 +168,13 @@ get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
                          const Map<Dim> &map);
 
 /**
- * @brief Generates a set of points and their corresponding desired values.
+ * @brief Generates a set of points in global frame and their corresponding
+ * desired values.
  *
  * This function generates a specified number of points and their desired values
  * based on the given state and point clouds. The points are generated in either
  * one or both directions with a specified step size.
  *
- * @tparam Dim The dimensionality of the state and points (2 or 3).
  * @param state The current state from which points are generated.
  * @param point_clouds A vector of point clouds in scanner frame used to
  * generate the points.
@@ -245,8 +245,8 @@ compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
  * given point.
  *
  * @param point The point in space for which the transformation derivative is
- * computed.
- * @param transform The affine transformation applied to the point.
+ * computed. Has to be in global frame.
+ * @param transform The affine transformation applied to the scanner point.
  * @param numerical If true, the derivative is computed numerically.
  */
 template <int Dim>
@@ -260,7 +260,8 @@ compute_transformation_derivative(
  * @brief Computes the derivative of a 3D transformation.
  * Assumes R = Rz(psi) * Ry(phi) * Rx(theta)
  *
- * @param p Point at which to compute the derivative.
+ * @param p Point at which to compute the derivative. Has to be in scanner
+ * frame.
  * @param theta Rotation angle around the x-axis.
  * @param phi Rotation angle around the y-axis.
  * @param psi Rotation angle around the z-axis.
@@ -283,7 +284,8 @@ Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(
 /**
  * @brief Computes the derivative of a 2D transformation.
  *
- * @param p Point at which to compute the derivative
+ * @param p Point at which to compute the derivative. Has to be in scanner
+ * frame.
  * @param theta Rotation angle
  * @return Eigen::Matrix<double, 2, 3> A matrix representing the derivative of
  *         the transformation. The columns of the matrix represent:
@@ -294,3 +296,10 @@ Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(
 Eigen::Matrix<double, 2, 3>
 compute_transformation_derivative_2d_numerical(const Eigen::Vector2d &p,
                                                const double theta);
+
+template <int Dim>
+Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)>
+compute_derivative_map_value_wrt_transformation_numerical(
+    const State<Dim> &state, const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
+    const double epsilon = 1e-8);

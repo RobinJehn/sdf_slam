@@ -529,23 +529,128 @@ compute_transformation_derivative(
     const Eigen::Matrix<double, Dim, 1> &point,
     const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
     const bool numerical) {
+  Eigen::Matrix<double, Dim, 1> point_in_scanner_frame =
+      transform.inverse() * point;
+
   if constexpr (Dim == 2) {
     const Eigen::Matrix2d &rotation = transform.rotation();
     double theta = std::atan2(rotation(1, 0), rotation(0, 0));
     if (numerical) {
-      return compute_transformation_derivative_2d_numerical(point, theta);
+      return compute_transformation_derivative_2d_numerical(
+          point_in_scanner_frame, theta);
     }
-    return compute_transformation_derivative_2d(point, theta);
+    return compute_transformation_derivative_2d(point_in_scanner_frame, theta);
   } else if constexpr (Dim == 3) {
     const Eigen::Matrix3d &rotation = transform.rotation();
     Eigen::Vector3d euler_angles = rotation.eulerAngles(0, 1, 2);
     if (numerical) {
       return compute_transformation_derivative_3d_numerical(
-          point, euler_angles[0], euler_angles[1], euler_angles[2]);
+          point_in_scanner_frame, euler_angles[0], euler_angles[1],
+          euler_angles[2]);
     }
     return compute_transformation_derivative_3d(
-        point, euler_angles[0], euler_angles[1], euler_angles[2]);
+        point_in_scanner_frame, euler_angles[0], euler_angles[1],
+        euler_angles[2]);
   }
+}
+
+template <int Dim>
+Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)>
+compute_derivative_map_value_wrt_transformation_numerical(
+    const State<Dim> &state, const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
+    const double epsilon) {
+  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> derivative;
+
+  Eigen::Matrix<double, Dim, 1> point_in_scanner_frame =
+      transform.inverse() * point;
+
+  // Compute the numerical derivatives with respect to translation
+  for (int i = 0; i < Dim; ++i) {
+    Eigen::Transform<double, Dim, Eigen::Affine> transform_plus = transform;
+    Eigen::Transform<double, Dim, Eigen::Affine> transform_minus = transform;
+    transform_plus.translation()[i] += epsilon;
+    transform_minus.translation()[i] -= epsilon;
+
+    Eigen::Matrix<double, Dim, 1> point_plus =
+        transform_plus * point_in_scanner_frame;
+    Eigen::Matrix<double, Dim, 1> point_minus =
+        transform_minus * point_in_scanner_frame;
+
+    if (!state.map_.in_bounds(point_plus) ||
+        !state.map_.in_bounds(point_minus)) {
+      derivative(0, i) = 0;
+      continue;
+    }
+    const double value_plus = state.map_.value(point_plus);
+    const double value_minus = state.map_.value(point_minus);
+    derivative(0, i) = (value_plus - value_minus) / (2 * epsilon);
+  }
+
+  // Compute the numerical derivatives with respect to rotation
+  if constexpr (Dim == 2) {
+    const Eigen::Matrix2d rotation = transform.rotation();
+    const double theta = std::atan2(rotation(1, 0), rotation(0, 0));
+
+    Eigen::Transform<double, Dim, Eigen::Affine> transform_plus = transform;
+    Eigen::Transform<double, Dim, Eigen::Affine> transform_minus = transform;
+    transform_plus.rotate(Eigen::Rotation2Dd(epsilon));
+    transform_minus.rotate(Eigen::Rotation2Dd(-epsilon));
+
+    Eigen::Matrix<double, Dim, 1> point_plus =
+        transform_plus * point_in_scanner_frame;
+    Eigen::Matrix<double, Dim, 1> point_minus =
+        transform_minus * point_in_scanner_frame;
+
+    if (!state.map_.in_bounds(point_plus) ||
+        !state.map_.in_bounds(point_minus)) {
+      derivative(0, 2) = 0;
+      return derivative;
+    }
+
+    const double value_plus = state.map_.value(point_plus);
+    const double value_minus = state.map_.value(point_minus);
+    derivative(0, 2) = (value_plus - value_minus) / (2 * epsilon);
+  } else if constexpr (Dim == 3) {
+    const Eigen::Matrix3d rotation = transform.rotation();
+    Eigen::Vector3d euler_angles = rotation.eulerAngles(0, 1, 2);
+
+    for (int i = 0; i < 3; ++i) {
+      Eigen::Transform<double, Dim, Eigen::Affine> transform_plus = transform;
+      Eigen::Transform<double, Dim, Eigen::Affine> transform_minus = transform;
+
+      Eigen::Vector3d euler_angles_plus = euler_angles;
+      euler_angles_plus[i] += epsilon;
+      Eigen::Vector3d euler_angles_minus = euler_angles;
+      euler_angles_minus[i] -= epsilon;
+
+      transform_plus.rotate(
+          Eigen::AngleAxisd(euler_angles_plus[0], Eigen::Vector3d::UnitX()) *
+          Eigen::AngleAxisd(euler_angles_plus[1], Eigen::Vector3d::UnitY()) *
+          Eigen::AngleAxisd(euler_angles_plus[2], Eigen::Vector3d::UnitZ()));
+      transform_minus.rotate(
+          Eigen::AngleAxisd(euler_angles_minus[0], Eigen::Vector3d::UnitX()) *
+          Eigen::AngleAxisd(euler_angles_minus[1], Eigen::Vector3d::UnitY()) *
+          Eigen::AngleAxisd(euler_angles_minus[2], Eigen::Vector3d::UnitZ()));
+
+      Eigen::Matrix<double, Dim, 1> point_plus =
+          transform_plus * point_in_scanner_frame;
+      Eigen::Matrix<double, Dim, 1> point_minus =
+          transform_minus * point_in_scanner_frame;
+
+      if (!state.map_.in_bounds(point_plus) ||
+          !state.map_.in_bounds(point_minus)) {
+        derivative(0, Dim + i) = 0;
+        continue;
+      }
+
+      const double value_plus = state.map_.value(point_plus);
+      const double value_minus = state.map_.value(point_minus);
+      derivative(0, Dim + i) = (value_plus - value_minus) / (2 * epsilon);
+    }
+  }
+
+  return derivative;
 }
 
 // Explicit template instantiation
@@ -620,3 +725,14 @@ template Eigen::Matrix<double, 3, 6> compute_transformation_derivative<3>(
     const Eigen::Matrix<double, 3, 1> &point,
     const Eigen::Transform<double, 3, Eigen::Affine> &transform,
     const bool numerical);
+
+template Eigen::Matrix<double, 1, 3>
+compute_derivative_map_value_wrt_transformation_numerical<2>(
+    const State<2> &state, const Eigen::Matrix<double, 2, 1> &point,
+    const Eigen::Transform<double, 2, Eigen::Affine> &transform,
+    const double epsilon);
+template Eigen::Matrix<double, 1, 6>
+compute_derivative_map_value_wrt_transformation_numerical<3>(
+    const State<3> &state, const Eigen::Matrix<double, 3, 1> &point,
+    const Eigen::Transform<double, 3, Eigen::Affine> &transform,
+    const double epsilon);
