@@ -113,6 +113,7 @@ private:
    * interpolation points.
    * @param interpolation_weights The weights for the interpolation.
    * @param transformation_index The index of the transformation being applied.
+   * @param residual_factor The factor used to weight the residual.
    */
   void fill_jacobian_dense(
       Eigen::MatrixXd &jacobian, const std::array<int, Dim> &num_map_points,
@@ -123,7 +124,7 @@ private:
       const std::array<typename Map<Dim>::index_t, (1 << Dim)>
           &interpolation_point_indices,
       const Eigen::VectorXd &interpolation_weights,
-      const int transformation_index) const;
+      const int transformation_index, const double residual_factor) const;
 
   /**
    * @brief Fills a sparse Jacobian matrix with the provided data.
@@ -151,6 +152,7 @@ private:
    * points.
    * @param transformation_index An integer index representing the current
    * transformation.
+   * @param residual_factor The factor used to weight the residual.
    */
   void fill_jacobian_sparse(
       std::vector<Eigen::Triplet<double>> &jacobian,
@@ -162,5 +164,5 @@ private:
       const std::array<typename Map<Dim>::index_t, (1 << Dim)>
           &interpolation_point_indices,
       const Eigen::VectorXd &interpolation_weights,
-      const int transformation_index) const;
+      const int transformation_index, const double residual_factor) const;
 };

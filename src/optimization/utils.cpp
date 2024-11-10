@@ -440,7 +440,10 @@ Eigen::VectorXd compute_residuals(
       interpolated_value = state.map_.value(point);
     }
 
-    residuals(i) = interpolated_value - desired_value;
+    double factor = i % (objective_args.scanline_points + 1) == 0
+                        ? objective_args.scan_point_factor
+                        : objective_args.scan_line_factor;
+    residuals(i) = factor * (interpolated_value - desired_value);
   }
 
   return residuals;

@@ -43,13 +43,13 @@ void ObjectiveFunctor<Dim>::fill_jacobian_dense(
     const std::array<typename Map<Dim>::index_t, (1 << Dim)>
         &interpolation_point_indices,
     const Eigen::VectorXd &interpolation_weights,
-    const int transformation_index) const {
+    const int transformation_index, const double residual_factor) const {
   for (int j = 0; j < interpolation_point_indices.size(); ++j) {
     const auto &index = interpolation_point_indices[j];
     const int flattened_index =
         map_index_to_flattened_index<Dim>(map_args_.num_points, index);
     const double weight = interpolation_weights[j];
-    jacobian(i, flattened_index) = weight;
+    jacobian(i, flattened_index) = residual_factor * weight;
   }
 
   // Transformation 0 is fixed
@@ -67,7 +67,7 @@ void ObjectiveFunctor<Dim>::fill_jacobian_dense(
   Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
       dDF_dPoint * dPoint_dTransformation;
   for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
-    jacobian(i, offset + d) = dDF_dTransformation(d);
+    jacobian(i, offset + d) = residual_factor * dDF_dTransformation(d);
   }
 }
 
@@ -82,13 +82,13 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
     const std::array<typename Map<Dim>::index_t, (1 << Dim)>
         &interpolation_point_indices,
     const Eigen::VectorXd &interpolation_weights,
-    const int transformation_index) const {
+    const int transformation_index, const double residual_factor) const {
   for (int j = 0; j < interpolation_point_indices.size(); ++j) {
     const auto &index = interpolation_point_indices[j];
     const int flattened_index =
         map_index_to_flattened_index<Dim>(map_args_.num_points, index);
     const double weight = interpolation_weights[j];
-    jacobian.emplace_back(i, flattened_index, weight);
+    jacobian.emplace_back(i, flattened_index, residual_factor * weight);
   }
 
   // Transformation 0 is fixed
@@ -108,7 +108,8 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
       dDF_dPoint * dPoint_dTransformation;
 
   for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
-    jacobian.emplace_back(i, offset + d, dDF_dTransformation(d));
+    jacobian.emplace_back(i, offset + d,
+                          residual_factor * dDF_dTransformation(d));
   }
 }
 
@@ -128,6 +129,10 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
     Eigen::Matrix<double, 1, Dim> dDF_dPoint =
         compute_approximate_derivative<Dim>(derivatives, point);
 
+    double factor = i % (objective_args_.scanline_points + 1) == 0
+                        ? objective_args_.scan_point_factor
+                        : objective_args_.scan_line_factor;
+
     const int transformation_index =
         std::floor(i / (point_value.size() / point_clouds_.size()));
     auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
@@ -135,7 +140,7 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
     fill_jacobian_dense(jacobian, map_args_.num_points, i, dDF_dPoint,
                         dPoint_dTransformation, point_clouds_,
                         interpolation_indices, interpolation_weights,
-                        transformation_index);
+                        transformation_index, factor);
   }
   return 0;
 }
@@ -162,6 +167,10 @@ int ObjectiveFunctor<Dim>::sparse_df(
           derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
     }
 
+    double factor = i % (objective_args_.scanline_points + 1) == 0
+                        ? objective_args_.scan_point_factor
+                        : objective_args_.scan_line_factor;
+
     const int transformation_index =
         std::floor(i / (point_value.size() / point_clouds_.size()));
     auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
@@ -169,7 +178,7 @@ int ObjectiveFunctor<Dim>::sparse_df(
     fill_jacobian_sparse(tripletList, map_args_.num_points, i, dDF_dPoint,
                          dPoint_dTransformation, point_clouds_,
                          interpolation_indices, interpolation_weights,
-                         transformation_index);
+                         transformation_index, factor);
   }
 
   jacobian.resize(values(), inputs());

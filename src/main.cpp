@@ -149,9 +149,11 @@ int main() {
   const bool from_ground_truth = true;
 
   ObjectiveArgs objective_args;
-  objective_args.scanline_points = 20;
+  objective_args.scanline_points = 10;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
+  objective_args.scan_line_factor = 1;
+  objective_args.scan_point_factor = 1;
 
   const int num_points = point_clouds[0].size() + point_clouds[1].size();
   const int num_residuals = num_points * (objective_args.scanline_points + 1);
@@ -164,7 +166,7 @@ int main() {
   OptimizationArgs optimization_args;
   optimization_args.max_iters = 100;
   optimization_args.initial_lambda = 1;
-  optimization_args.tolerance = 1e-5;
+  optimization_args.tolerance = 1e-3;
   optimization_args.lambda_factor = 1;
 
   // Initialize the map and set up the optimization parameters
