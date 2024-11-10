@@ -8,7 +8,7 @@
 
 struct ObjectiveArgs {
   // Scan lines
-  int number_of_points = 20;   // Number of points along the scan line
+  int scanline_points = 20;    // Number of points along the scan line
   double step_size = 0.1;      // Step size between points
   bool both_directions = true; // Whether to add points in both directions
 };

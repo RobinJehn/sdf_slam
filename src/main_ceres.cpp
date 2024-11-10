@@ -108,13 +108,13 @@ int main(int argc, char *argv[]) {
 
   // Set up optimization parameters
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 20;
+  objective_args.scanline_points = 20;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
   constexpr int number_of_scanned_points = 2 * num_scan_points;
   const int num_residuals =
-      number_of_scanned_points * (objective_args.number_of_points + 1);
+      number_of_scanned_points * (objective_args.scanline_points + 1);
   const int num_parameters =
       (point_clouds.size() - 1) * 3 + map_size_x * map_size_y;
 

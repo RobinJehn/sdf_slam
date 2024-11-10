@@ -351,7 +351,7 @@ generate_points_and_desired_values(
       scanner_cloud_with_extra_points.push_back(point);
       scanner_cloud_with_extra_points_values.push_back(0.0);
 
-      if (objective_args.number_of_points > 0) {
+      if (objective_args.scanline_points > 0) {
         Eigen::Matrix<double, Dim, 1> point_vector;
         point_vector[0] = point.x;
         point_vector[1] = point.y;
@@ -361,7 +361,7 @@ generate_points_and_desired_values(
 
         Eigen::Matrix<double, Dim, 1> vector_to_origin =
             -point_vector.normalized() * objective_args.step_size;
-        int desired_points = objective_args.number_of_points /
+        int desired_points = objective_args.scanline_points /
                                  (objective_args.both_directions ? 2 : 1) +
                              1;
         for (int j = 1; j < desired_points; ++j) {

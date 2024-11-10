@@ -17,7 +17,7 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
   map_args.max_coords = {10.0, 10.0};
 
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 100;
+  objective_args.scanline_points = 100;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
@@ -80,7 +80,7 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
   map_args.max_coords = {10.0, 10.0};
 
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 100;
+  objective_args.scanline_points = 100;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
@@ -130,7 +130,7 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
   map_args.max_coords = {10.0, 10.0};
 
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 100;
+  objective_args.scanline_points = 100;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
@@ -220,7 +220,7 @@ TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
   map_args.max_coords = {10.0, 10.0};
 
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 100;
+  objective_args.scanline_points = 100;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 

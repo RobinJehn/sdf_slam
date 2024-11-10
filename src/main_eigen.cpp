@@ -57,13 +57,13 @@ int main(int argc, char *argv[]) {
 
   // Create the objective functor
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 20;
+  objective_args.scanline_points = 20;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
   const int number_of_scanned_points = scan1->size() + scan2->size();
   const int number_of_residuals =
-      number_of_scanned_points * (objective_args.number_of_points + 1);
+      number_of_scanned_points * (objective_args.scanline_points + 1);
   ObjectiveFunctor<2> functor(6 + map_size_x * map_size_y, number_of_residuals,
                               map_args, point_clouds, objective_args,
                               initial_frame);

@@ -149,9 +149,12 @@ int main() {
   const bool from_ground_truth = true;
 
   ObjectiveArgs objective_args;
-  objective_args.number_of_points = 20;
+  objective_args.scanline_points = 20;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
+
+  const int num_points = point_clouds[0].size() + point_clouds[1].size();
+  const int num_residuals = num_points * (objective_args.scanline_points + 1);
 
   MapArgs<2> map_args;
   map_args.num_points = {200, 200};
@@ -176,11 +179,8 @@ int main() {
       transformations = {initial_frame, initial_frame_2};
 
   Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
-  ObjectiveFunctor<2> functor(params.size(),
-                              (scans.first->size() + scans.second->size()) *
-                                  (objective_args.number_of_points + 1),
-                              map_args, point_clouds, objective_args,
-                              initial_frame);
+  ObjectiveFunctor<2> functor(params.size(), num_residuals, map_args,
+                              point_clouds, objective_args, initial_frame);
 
   cholmod_common c;
   cholmod_start(&c);
