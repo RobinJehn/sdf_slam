@@ -55,72 +55,85 @@ void runOptimization(
     ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, cholmod_common &c,
     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
     const int map_points_x, const int map_points_y, const bool visualize,
-    const int max_iters, const double initial_lambda, const double tolerance,
-    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame) {
+    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+    const OptimizationArgs &opt_args) {
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
-  double lambda = initial_lambda;
+  double lambda = opt_args.initial_lambda;
 
-  for (int iter = 0; iter < max_iters; ++iter) {
+  functor(params, residuals);
+  double error = residuals.squaredNorm();
+  std::cout << "Initial Error: " << error << std::endl;
+
+  for (int iter = 0; iter < opt_args.max_iters; ++iter) {
+    // Compute the Jacobian matrix
     functor.sparse_df(params, jacobian_sparse);
-    functor(params, residuals);
-
-    std::cout << "Iteration: " << iter << " Error: " << residuals.squaredNorm()
-              << std::endl;
-
     if (jacobian_sparse.nonZeros() == 0) {
       std::cerr << "Error: Jacobian has no non-zero entries." << std::endl;
       return;
     }
 
-    Eigen::SparseMatrix<double> jt_j =
-        jacobian_sparse.transpose() * jacobian_sparse;
-
-    Eigen::SparseMatrix<double> identity(jt_j.rows(), jt_j.cols());
-    identity.setIdentity();
-    Eigen::SparseMatrix<double> lm_matrix = jt_j + lambda * identity;
+    // RHS of the linear system
     Eigen::VectorXd jt_residuals = -jacobian_sparse.transpose() * residuals;
-
-    cholmod_sparse *cholmod_lm_matrix;
-    eigenToCholmod(lm_matrix, cholmod_lm_matrix, c);
-
     cholmod_dense *rhs = cholmod_allocate_dense(
         jt_residuals.size(), 1, jt_residuals.size(), CHOLMOD_REAL, &c);
     std::memcpy(rhs->x, jt_residuals.data(),
                 jt_residuals.size() * sizeof(double));
 
-    cholmod_factor *L = cholmod_analyze(cholmod_lm_matrix, &c);
-    cholmod_factorize(cholmod_lm_matrix, L, &c);
-    cholmod_dense *cholmod_result = cholmod_solve(CHOLMOD_A, L, rhs, &c);
+    // LHS of the linear system
+    Eigen::SparseMatrix<double> jt_j =
+        jacobian_sparse.transpose() * jacobian_sparse;
+    Eigen::SparseMatrix<double> identity(jt_j.rows(), jt_j.cols());
+    identity.setIdentity();
+    Eigen::SparseMatrix<double> lhs_eigen = jt_j + lambda * identity;
+
+    // Cholesky factorization
+    cholmod_sparse *lhs;
+    eigenToCholmod(lhs_eigen, lhs, c);
+    cholmod_factor *lhs_factorised = cholmod_analyze(lhs, &c);
+    cholmod_factorize(lhs, lhs_factorised, &c);
+
+    // Solve the linear system
+    cholmod_dense *cholmod_result =
+        cholmod_solve(CHOLMOD_A, lhs_factorised, rhs, &c);
 
     if (!cholmod_result) {
       std::cerr << "Error: cholmod_solve failed." << std::endl;
       cholmod_free_dense(&rhs, &c);
-      cholmod_free_sparse(&cholmod_lm_matrix, &c);
+      cholmod_free_sparse(&lhs, &c);
       return;
     }
 
+    // Update the parameters
     Eigen::VectorXd delta(jt_residuals.size());
     std::memcpy(delta.data(), cholmod_result->x,
                 jt_residuals.size() * sizeof(double));
     params += delta;
 
-    double prev_error = residuals.squaredNorm();
+    // Update lambda
     functor(params, residuals);
     double new_error = residuals.squaredNorm();
+    lambda = new_error < error ? lambda / opt_args.lambda_factor
+                               : lambda * opt_args.lambda_factor;
+    error = new_error;
 
-    if (delta.norm() < tolerance)
-      break;
-    lambda = new_error < prev_error ? lambda * 0.3 : lambda * 3;
-
-    cholmod_free_dense(&rhs, &c);
-    cholmod_free_dense(&cholmod_result, &c);
-    cholmod_free_sparse(&cholmod_lm_matrix, &c);
-
+    // Logging
+    const double update_norm = delta.norm();
+    std::cout << "Iteration: " << iter << " Error: " << error
+              << " Update Norm:" << update_norm << std::endl;
     if (visualize) {
       visualizeMap(params, scans, {map_points_x, map_points_y}, {-3, -8},
                    {2 * M_PI + 3, 4}, initial_frame);
     }
+
+    // Free memory
+    cholmod_free_sparse(&lhs, &c);
+    cholmod_free_dense(&rhs, &c);
+    cholmod_free_dense(&cholmod_result, &c);
+
+    // Early stopping
+    if (update_norm < opt_args.tolerance)
+      break;
   }
 }
 
@@ -145,9 +158,12 @@ int main() {
   const double step_size = 0.1;
   const bool visualize = false;
   const bool from_ground_truth = true;
-  const int max_iters = 100;
-  const double lambda = 1;
-  const double tolerance = 1e-5;
+
+  OptimizationArgs optimization_args;
+  optimization_args.max_iters = 100;
+  optimization_args.initial_lambda = 1;
+  optimization_args.tolerance = 1e-5;
+  optimization_args.lambda_factor = 1;
 
   // Initialize the map and set up the optimization parameters
   Map<2> map = init_map(x_min, x_max, y_min, y_max, map_points_x, map_points_y,
@@ -173,7 +189,7 @@ int main() {
   cholmod_common c;
   cholmod_start(&c);
   runOptimization(functor, params, c, point_clouds, map_points_x, map_points_y,
-                  visualize, max_iters, lambda, tolerance, initial_frame);
+                  visualize, initial_frame, optimization_args);
   cholmod_finish(&c);
 
   // Visualize the optimized map and transformed point clouds

@@ -3,6 +3,21 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+struct ObjectiveArgs {
+  // Scan lines
+  int number_of_points; // Number of points along the scan line
+  double step_size;     // Step size between points
+  bool both_directions; // Whether to add points in both directions
+};
+
+struct OptimizationArgs {
+  int max_iters = 20;        // Maximum number of iterations
+  double initial_lambda = 1; // Initial lambda in Levenberg-Marquardt
+  double lambda_factor = 1;  // Factor by which lambda is multiplied or divided
+                             // each iteration
+  double tolerance = 1e-3;   // Tolerance for stopping criteria
+};
+
 /**
  * @brief Computes the derivative of a 3D transformation.
  * Assumes R = Rz(psi) * Ry(phi) * Rx(theta)
