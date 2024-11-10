@@ -147,26 +147,24 @@ scan_to_global(const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>>
 void visualizeMap(
     const Eigen::VectorXd &params,
     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-    const std::array<int, 2> &num_map_points, const Eigen::Vector2d &min_coords,
-    const Eigen::Vector2d &max_coords,
+    const MapArgs<2> &map_args,
     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
     const int output_width, const int output_height) {
-  State<2> state = unflatten<2>(params, num_map_points, min_coords, max_coords,
-                                initial_frame);
+  State<2> state = unflatten<2>(params, initial_frame, map_args);
 
   std::vector<Eigen::Vector2d> global_points =
       scan_to_global<2>(state.transformations_, scans);
 
   // Generate and display the map image
-  Eigen::MatrixXd map(num_map_points[0], num_map_points[1]);
+  Eigen::MatrixXd map(map_args.num_points[0], map_args.num_points[1]);
   int index = 0;
-  for (int x = 0; x < num_map_points[0]; ++x) {
-    for (int y = 0; y < num_map_points[1]; ++y) {
+  for (int x = 0; x < map_args.num_points[0]; ++x) {
+    for (int y = 0; y < map_args.num_points[1]; ++y) {
       map(y, x) = std::max(-3.0, std::min(3.0, params(index++)));
     }
   }
-  displayMapWithPoints(map, global_points, min_coords, max_coords, output_width,
-                       output_height);
+  displayMapWithPoints(map, global_points, map_args.min_coords,
+                       map_args.max_coords, output_width, output_height);
 }
 
 // Explicit template instantiation for 2D points

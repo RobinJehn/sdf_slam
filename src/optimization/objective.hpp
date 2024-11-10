@@ -1,5 +1,6 @@
 #pragma once
 #include "map/map.hpp"
+#include "map/utils.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <array>
@@ -34,9 +35,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   using Vector = std::conditional_t<Dim == 2, Eigen::Vector2d, Eigen::Vector3d>;
 
   ObjectiveFunctor(
-      const int num_inputs, const int num_outputs,
-      const std::array<int, Dim> &num_points, const Vector &min_coords_,
-      const Vector &max_coords_,
+      const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
       const std::vector<pcl::PointCloud<PointType>> &point_clouds,
       const int number_of_points, const bool both_directions,
       const double step_size,
@@ -75,11 +74,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
 
 private:
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
-  const std::array<int, Dim> num_map_points_;
-
-  /** Minimum and maximum values in each dimension */
-  const Vector min_coords_;
-  const Vector max_coords_;
+  const MapArgs<Dim> map_args_;
 
   /** Parameters for point line residuals */
   const int number_of_points_;
@@ -97,10 +92,8 @@ private:
    * Localization and Mapping) context.
    */
   std::pair<State<Dim>, std::array<Map<Dim>, Dim>>
-  compute_state_and_derivatives(
-      const Eigen::VectorXd &x, const std::array<int, Dim> &num_map_points,
-      const Eigen::Matrix<double, Dim, 1> &min_coords,
-      const Eigen::Matrix<double, Dim, 1> &max_coords) const;
+  compute_state_and_derivatives(const Eigen::VectorXd &x,
+                                const MapArgs<Dim> &map_args) const;
 
   /**
    * @brief Fills the dense Jacobian matrix for the given transformation.

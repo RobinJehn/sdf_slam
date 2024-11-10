@@ -1,6 +1,13 @@
 #pragma once
 #include <Eigen/Dense>
 
+template <int Dim> struct MapArgs {
+  using Vector = Eigen::Matrix<double, Dim, 1>;
+  std::array<int, Dim> num_points;
+  Vector min_coords;
+  Vector max_coords;
+};
+
 /**
  * @brief Performs trilinear interpolation within a 3D space defined by eight
  * corner points.

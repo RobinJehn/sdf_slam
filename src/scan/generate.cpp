@@ -1,3 +1,4 @@
+#include "generate.hpp"
 #include "map/map.hpp"
 #include <Eigen/Dense>
 #include <algorithm>
@@ -15,7 +16,7 @@
 double f(double x) { return std::sin(x); }
 
 double bisection(std::function<double(double)> func, double a, double b,
-                 double tol = 1e-6, int max_iter = 100) {
+                 double tol, int max_iter) {
   double fa = func(a);
   double fb = func(b);
   if (fa * fb > 0) {
@@ -106,8 +107,8 @@ std::pair<pcl::PointCloud<pcl::PointXY>::Ptr,
 create_scans(const Eigen::Vector2d &scanner_position_1,
              const double theta_scanner_1,
              const Eigen::Vector2d &scanner_position_2,
-             const double theta_scanner_2, const int num_points = 100,
-             const double angle_range = M_PI / 4) {
+             const double theta_scanner_2, const int num_points,
+             const double angle_range) {
   auto scan_1 =
       create_scan(scanner_position_1, theta_scanner_1, angle_range, num_points);
   auto scan_2 =
@@ -155,23 +156,20 @@ double find_closest_point(const double x, const double y,
   return x_initial;
 }
 
-Map<2> init_map(const double x_min, const double x_max, const double y_min,
-                const double y_max, const int num_x, const int num_y,
-                const bool from_ground_truth) {
-  const std::array<int, 2> num_points = {num_x, num_y};
-  const Eigen::Vector2d min_coords(x_min, y_min);
-  const Eigen::Vector2d max_coords(x_max, y_max);
-  Map<2> map(num_points, min_coords, max_coords);
+Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth) {
+  Map<2> map(map_args);
 
   if (from_ground_truth) {
     // Create linearly spaced vectors for x and y
-    Eigen::VectorXd x_vals = Eigen::VectorXd::LinSpaced(num_x, x_min, x_max);
-    Eigen::VectorXd y_vals = Eigen::VectorXd::LinSpaced(num_y, y_min, y_max);
+    Eigen::VectorXd x_vals = Eigen::VectorXd::LinSpaced(
+        map_args.num_points[0], map_args.min_coords[0], map_args.max_coords[0]);
+    Eigen::VectorXd y_vals = Eigen::VectorXd::LinSpaced(
+        map_args.num_points[1], map_args.min_coords[1], map_args.max_coords[1]);
 
     // Loop over each grid point
-    for (int i = 0; i < num_x; ++i) {
+    for (int i = 0; i < map_args.num_points[0]; ++i) {
       double x_val = x_vals(i);
-      for (int j = 0; j < num_y; ++j) {
+      for (int j = 0; j < map_args.num_points[1]; ++j) {
         const double y_val = y_vals(j);
 
         // Find x_optimal that minimizes the distance squared

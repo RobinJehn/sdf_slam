@@ -35,10 +35,12 @@ int main(int argc, char *argv[]) {
   bool from_ground_truth = false;
 
   // Initialize the map
-  std::array<int, 2> num_points = {map_size_x, map_size_y};
-  Eigen::Vector2d min_coords(x_min, y_min);
-  Eigen::Vector2d max_coords(x_max, y_max);
-  Map<2> map(num_points, min_coords, max_coords);
+  MapArgs<2> map_args;
+  map_args.num_points = {map_size_x, map_size_y};
+  map_args.min_coords = {x_min, y_min};
+  map_args.max_coords = {x_max, y_max};
+
+  Map<2> map(map_args);
 
   // Define the initial frame and initial guess for the optimization
   Eigen::Transform<double, 2, Eigen::Affine> initial_frame;
@@ -61,10 +63,9 @@ int main(int argc, char *argv[]) {
   const int number_of_scanned_points = scan1->size() + scan2->size();
   const int number_of_residuals =
       number_of_scanned_points * (num_line_points + 1);
-  ObjectiveFunctor<2> functor(
-      6 + map_size_x * map_size_y, number_of_residuals, num_points,
-      min_coords.cast<double>(), max_coords.cast<double>(), point_clouds,
-      num_line_points, both_directions, step_size, initial_frame);
+  ObjectiveFunctor<2> functor(6 + map_size_x * map_size_y, number_of_residuals,
+                              map_args, point_clouds, num_line_points,
+                              both_directions, step_size, initial_frame);
 
   // Define the initial parameters for the optimization
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {

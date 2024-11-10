@@ -9,14 +9,12 @@
 // Constructor Implementation for ObjectiveFunctorCeres
 template <int Dim>
 ObjectiveFunctorCeres<Dim>::ObjectiveFunctorCeres(
-    const std::array<int, Dim> &num_map_points, const Vector &min_coords,
-    const Vector &max_coords,
+    const MapArgs<Dim> &map_args,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
     const int number_of_points, const bool both_directions,
     const double step_size, const int num_inputs, const int num_outputs,
     const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame)
-    : num_map_points_(num_map_points), min_coords_(min_coords),
-      max_coords_(max_coords), point_clouds_(point_clouds),
+    : map_args_(map_args), point_clouds_(point_clouds),
       number_of_points_(number_of_points), both_directions_(both_directions),
       step_size_(step_size), num_inputs_(num_inputs), num_outputs_(num_outputs),
       initial_frame_(initial_frame) {}
@@ -25,11 +23,8 @@ ObjectiveFunctorCeres<Dim>::ObjectiveFunctorCeres(
 template <int Dim>
 bool ObjectiveFunctorCeres<Dim>::compute_residuals(
     const Eigen::VectorXd &x, Eigen::VectorXd &residuals) const {
-  // Unflatten state from parameters
-  State<Dim> state = unflatten<Dim>(x, num_map_points_, min_coords_,
-                                    max_coords_, initial_frame_);
-
-  // Compute residuals based on current state
+  // Unflatten the state and compute the residuals
+  State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
   residuals = objective_vec<Dim>(state, point_clouds_, number_of_points_,
                                  both_directions_, step_size_);
   return true;
@@ -40,8 +35,7 @@ template <int Dim>
 void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
                                     Eigen::MatrixXd &jacobian) const {
   // Unflatten state from parameters
-  State<Dim> state = unflatten<Dim>(x, num_map_points_, min_coords_,
-                                    max_coords_, initial_frame_);
+  State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
 
   // Compute the Jacobian matrix using the derivatives of the map and
   // transformation
@@ -62,7 +56,7 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
     for (int j = 0; j < interpolation_point_indices.size(); ++j) {
       const auto &index = interpolation_point_indices[j];
       const int flattened_index =
-          map_index_to_flattened_index<Dim>(num_map_points_, index);
+          map_index_to_flattened_index<Dim>(map_args_.num_points, index);
       jacobian(i, flattened_index) = interpolation_weights[j];
     }
 
@@ -86,7 +80,7 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
 
     int total_map_points = 1;
     for (int d = 0; d < Dim; ++d) {
-      total_map_points *= num_map_points_[d];
+      total_map_points *= map_args_.num_points[d];
     }
     const int offset = total_map_points +
                        (transformation_index - 1) * (Dim + (Dim == 3 ? 3 : 1));

@@ -3,12 +3,11 @@
 #include <iostream>
 
 template <int Dim>
-Map<Dim>::Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
-              const Vector &max_coords)
-    : num_points_(num_points), min_coords_(min_coords),
-      max_coords_(max_coords) {
+Map<Dim>::Map(const MapArgs<Dim> &args)
+    : num_points_(args.num_points), min_coords_(args.min_coords),
+      max_coords_(args.max_coords) {
   for (int i = 0; i < Dim; ++i) {
-    d_[i] = (max_coords[i] - min_coords[i]) / (num_points[i] - 1);
+    d_[i] = (max_coords_[i] - min_coords_[i]) / (num_points_[i] - 1);
   }
 
   // Initialize grid values to 0
@@ -172,16 +171,17 @@ template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
   // Initialize the derivative maps with the same grid setup as the original
   // map
   std::array<Map<Dim>, Dim> derivatives = [this]() {
+    MapArgs<Dim> args{num_points_, min_coords_, max_coords_};
     if constexpr (Dim == 2) {
       return std::array<Map<Dim>, 2>{
-          Map<Dim>(num_points_, min_coords_, max_coords_), // x-direction
-          Map<Dim>(num_points_, min_coords_, max_coords_)  // y-direction
+          Map<Dim>(args), // x-direction
+          Map<Dim>(args)  // y-direction
       };
     } else if constexpr (Dim == 3) {
       return std::array<Map<Dim>, 3>{
-          Map<Dim>(num_points_, min_coords_, max_coords_), // x-direction
-          Map<Dim>(num_points_, min_coords_, max_coords_), // y-direction
-          Map<Dim>(num_points_, min_coords_, max_coords_)  // z-direction
+          Map<Dim>(args), // x-direction
+          Map<Dim>(args), // y-direction
+          Map<Dim>(args)  // z-direction
       };
     }
   }();

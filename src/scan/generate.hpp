@@ -1,6 +1,7 @@
 #pragma once
 
 #include "map/map.hpp"
+#include "map/utils.hpp"
 #include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
@@ -68,20 +69,13 @@ create_scans(const Eigen::Vector2d &scanner_position_1,
  * specified number of cells along each axis. The map can optionally be
  * initialized from ground truth data.
  *
- * @param x_min The minimum x-coordinate of the map.
- * @param x_max The maximum x-coordinate of the map.
- * @param y_min The minimum y-coordinate of the map.
- * @param y_max The maximum y-coordinate of the map.
- * @param num_x The number of cells along the x-axis.
- * @param num_y The number of cells along the y-axis.
+ * @param map_args Arguments for initializing the map.
  * @param from_ground_truth A boolean flag indicating whether to initialize
  *                          the map from ground truth data.
  *
  * @return The initialized map.
  */
-Map<2> init_map(const double x_min, const double x_max, const double y_min,
-                const double y_max, const int num_x, const int num_y,
-                const bool from_ground_truth);
+Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth);
 
 /**
  * @brief Find the closest point to (x, y) that is on the sin curve

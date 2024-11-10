@@ -1,4 +1,5 @@
 #pragma once
+#include "map/utils.hpp"
 #include <Eigen/Dense>
 #include <algorithm>
 #include <opencv2/opencv.hpp>
@@ -16,8 +17,7 @@ void plotPointsWithValuesPCL(
 void visualizeMap(
     const Eigen::VectorXd &params,
     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-    const std::array<int, 2> &num_map_points, const Eigen::Vector2d &min_coords,
-    const Eigen::Vector2d &max_coords,
+    const MapArgs<2> &map_args,
     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
     const int output_width = 1000, const int output_height = 1000);
 

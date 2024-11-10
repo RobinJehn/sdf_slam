@@ -1,4 +1,5 @@
 #include "map/map.hpp"
+#include "map/utils.hpp"
 #include "optimization/objective_ceres.hpp"
 #include "optimization/utils.hpp"
 #include "scan/generate.hpp"
@@ -75,12 +76,20 @@ int main(int argc, char *argv[]) {
   pcl::PointCloud<pcl::PointXY>::Ptr scan2 = scans.second;
 
   // Define map parameters
-  constexpr double x_min = -3, x_max = 2 * M_PI + 3, y_min = -8, y_max = 4;
-  constexpr int map_size_x = 50, map_size_y = 50;
+  constexpr double x_min = -3;
+  constexpr double x_max = 2 * M_PI + 3;
+  constexpr double y_min = -8;
+  constexpr double y_max = 4;
+  constexpr int map_size_x = 50;
+  constexpr int map_size_y = 50;
+
+  MapArgs<2> map_args;
+  map_args.num_points = {map_size_x, map_size_y};
+  map_args.min_coords = Eigen::Vector2d(x_min, y_min);
+  map_args.max_coords = Eigen::Vector2d(x_max, y_max);
 
   // Initialize the map
-  Map<2> map =
-      init_map(x_min, x_max, y_min, y_max, map_size_x, map_size_y, true);
+  Map<2> map = init_map(map_args, true);
 
   // Plot the initial map
   plot_map(map, map_size_x, map_size_y, x_min, x_max, y_min, y_max,
@@ -109,9 +118,8 @@ int main(int argc, char *argv[]) {
 
   // Objective Functor for 2D with Ceres
   ObjectiveFunctorCeres<2> *functor = new ObjectiveFunctorCeres<2>(
-      {map_size_x, map_size_y}, {x_min, y_min}, {x_max, y_max}, point_clouds,
-      num_line_points, both_directions, step_size, num_parameters,
-      num_residuals, initial_frame_1);
+      map_args, point_clouds, num_line_points, both_directions, step_size,
+      num_parameters, num_residuals, initial_frame_1);
 
   // Flatten the state into the parameter vector
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {
@@ -147,9 +155,7 @@ int main(int argc, char *argv[]) {
   save_summary_to_file("optimization_summary.txt", summary);
 
   // Unflatten the optimized parameters back into the state
-  State<2> optimized_state =
-      unflatten<2>(params, {map_size_x, map_size_y}, {x_min, y_min},
-                   {x_max, y_max}, initial_frame_1);
+  State<2> optimized_state = unflatten<2>(params, initial_frame_1, map_args);
 
   plot_map(optimized_state.map_, map_size_x, map_size_y, x_min, x_max, y_min,
            y_max, "Optimized Map");

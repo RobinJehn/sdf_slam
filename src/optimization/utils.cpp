@@ -187,18 +187,9 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
 template <int Dim>
 State<Dim>
 unflatten(const Eigen::VectorXd &flattened_state,
-          const std::array<int, Dim> &num_points,
-          const Eigen::Matrix<double, Dim, 1> &min_coords,
-          const Eigen::Matrix<double, Dim, 1> &max_coords,
-          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame) {
-  const int num_transformations =
-      (flattened_state.size() - std::accumulate(num_points.begin(),
-                                                num_points.end(), 1,
-                                                std::multiplies<int>())) /
-          (Dim + (Dim == 3 ? 3 : 1)) + // 3 for Euler angles, 1 for angle
-      1;                               // + 1 for initial frame
-
-  Map<Dim> map(num_points, min_coords, max_coords);
+          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame,
+          const MapArgs<Dim> &map_args) {
+  Map<Dim> map(map_args);
 
   // Unflatten the map
   int index = 0;
@@ -213,6 +204,13 @@ unflatten(const Eigen::VectorXd &flattened_state,
       }
     }
   }
+
+  // Calculate the number of transformations
+  const int num_transform_params =
+      flattened_state.size() - map.get_num_points();
+  const int num_params_per_transform = Dim + (Dim == 3 ? 3 : 1);
+  const int num_transformations =
+      num_transform_params / num_params_per_transform + 1;
 
   // Unflatten the transformations
   std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> transforms(
@@ -664,16 +662,12 @@ template Eigen::VectorXd flatten<2>(const State<2> &state);
 template Eigen::VectorXd flatten<3>(const State<3> &state);
 template State<2>
 unflatten<2>(const Eigen::VectorXd &flattened_state,
-             const std::array<int, 2> &num_points,
-             const Eigen::Matrix<double, 2, 1> &min_coords,
-             const Eigen::Matrix<double, 2, 1> &max_coords,
-             const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame);
+             const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+             const MapArgs<2> &map_args);
 template State<3>
 unflatten<3>(const Eigen::VectorXd &flattened_state,
-             const std::array<int, 3> &num_points,
-             const Eigen::Matrix<double, 3, 1> &min_coords,
-             const Eigen::Matrix<double, 3, 1> &max_coords,
-             const Eigen::Transform<double, 3, Eigen::Affine> &initial_frame);
+             const Eigen::Transform<double, 3, Eigen::Affine> &initial_frame,
+             const MapArgs<3> &map_args);
 template int
 map_index_to_flattened_index<2>(const std::array<int, 2> &num_points,
                                 const typename Map<2>::index_t &index);

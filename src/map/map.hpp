@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils.hpp"
 #include <Eigen/Dense>
 #include <functional>
 #include <unordered_map>
@@ -16,7 +17,7 @@ template <int Dim> class Map {
 
 public:
   using index_t = std::array<int, Dim>;
-  using Vector = std::conditional_t<Dim == 2, Eigen::Vector2d, Eigen::Vector3d>;
+  using Vector = Eigen::Matrix<double, Dim, 1>;
 
   /**
    * @brief Get the value at a certain point in the map
@@ -31,12 +32,9 @@ public:
   /**
    * @brief Construct a new Map object
    *
-   * @param num_points Number of points in the grid for each dimension
-   * @param min_coords Minimum coordinates in each dimension
-   * @param max_coords Maximum coordinates in each dimension
+   * @param args Arguments to initialize the map
    */
-  Map(const std::array<int, Dim> &num_points, const Vector &min_coords,
-      const Vector &max_coords);
+  Map(const MapArgs<Dim> &args);
 
   int get_num_points(int dim) const { return num_points_[dim]; }
 

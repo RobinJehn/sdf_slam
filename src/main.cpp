@@ -1,4 +1,5 @@
 #include "map/map.hpp"
+#include "map/utils.hpp"
 #include "optimization/objective.hpp"
 #include "optimization/optimizer.hpp"
 #include "optimization/utils.hpp"
@@ -54,7 +55,7 @@ void setupScanPositions(double &theta1, double &theta2, Eigen::Vector2d &pos1,
 void runOptimization(
     ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, cholmod_common &c,
     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-    const int map_points_x, const int map_points_y, const bool visualize,
+    const MapArgs<2> &map_args, const bool visualize,
     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
     const OptimizationArgs &opt_args) {
   Eigen::SparseMatrix<double> jacobian_sparse;
@@ -122,8 +123,7 @@ void runOptimization(
     std::cout << "Iteration: " << iter << " Error: " << error
               << " Update Norm:" << update_norm << std::endl;
     if (visualize) {
-      visualizeMap(params, scans, {map_points_x, map_points_y}, {-3, -8},
-                   {2 * M_PI + 3, 4}, initial_frame);
+      visualizeMap(params, scans, map_args, initial_frame);
     }
 
     // Free memory
@@ -159,6 +159,11 @@ int main() {
   const bool visualize = false;
   const bool from_ground_truth = true;
 
+  MapArgs<2> map_args;
+  map_args.num_points = {map_points_x, map_points_y};
+  map_args.min_coords = Eigen::Vector2d(-3, -8);
+  map_args.max_coords = Eigen::Vector2d(2 * M_PI + 3, 4);
+
   OptimizationArgs optimization_args;
   optimization_args.max_iters = 100;
   optimization_args.initial_lambda = 1;
@@ -166,8 +171,7 @@ int main() {
   optimization_args.lambda_factor = 1;
 
   // Initialize the map and set up the optimization parameters
-  Map<2> map = init_map(x_min, x_max, y_min, y_max, map_points_x, map_points_y,
-                        from_ground_truth);
+  Map<2> map = init_map(map_args, from_ground_truth);
 
   Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Translation<double, 2>(pos1) * Eigen::Rotation2D<double>(theta1);
@@ -180,21 +184,19 @@ int main() {
   ObjectiveFunctor<2> functor(
       (transformations.size() - 1) * 3 + map_points_x * map_points_y,
       (scans.first->size() + scans.second->size()) * (number_of_points + 1),
-      {map_points_x, map_points_y}, {x_min, y_min}, {x_max, y_max},
-      point_clouds, number_of_points, both_directions, step_size,
+      map_args, point_clouds, number_of_points, both_directions, step_size,
       initial_frame);
 
   Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
 
   cholmod_common c;
   cholmod_start(&c);
-  runOptimization(functor, params, c, point_clouds, map_points_x, map_points_y,
-                  visualize, initial_frame, optimization_args);
+  runOptimization(functor, params, c, point_clouds, map_args, visualize,
+                  initial_frame, optimization_args);
   cholmod_finish(&c);
 
   // Visualize the optimized map and transformed point clouds
-  visualizeMap(params, point_clouds, {map_points_x, map_points_y},
-               {x_min, y_min}, {x_max, y_max}, initial_frame);
+  visualizeMap(params, point_clouds, map_args, initial_frame);
 
   return 0;
 }

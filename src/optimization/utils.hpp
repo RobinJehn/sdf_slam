@@ -1,3 +1,4 @@
+#include "map/utils.hpp"
 #include "state/state.hpp"
 #include <Eigen/Dense>
 #include <pcl/point_cloud.h>
@@ -115,18 +116,15 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
  *
  * @tparam Dim The dimension of the state.
  * @param flattened_state The flattened Eigen::VectorXd to be unflattened.
- * @param num_points The number of points in each dimension.
- * @param min_coords The minimum coordinates in each dimension.
- * @param max_coords The maximum coordinates in each dimension.
+ * @param initial_frame The initial frame of the map.
+ * @param map_args The arguments used to create the map.
  * @return An unflattened State object.
  */
 template <int Dim>
 State<Dim>
 unflatten(const Eigen::VectorXd &flattened_state,
-          const std::array<int, Dim> &num_points,
-          const Eigen::Matrix<double, Dim, 1> &min_coords,
-          const Eigen::Matrix<double, Dim, 1> &max_coords,
-          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
+          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame,
+          const MapArgs<Dim> &map_args);
 
 template <int Dim>
 int map_index_to_flattened_index(const std::array<int, Dim> &num_points,

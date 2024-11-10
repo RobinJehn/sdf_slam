@@ -1,3 +1,4 @@
+#include "map/utils.hpp"
 #include "optimization/objective.hpp"
 #include "optimization/utils.hpp"
 #include <Eigen/Dense>
@@ -6,25 +7,27 @@
 #include <pcl/common/transforms.h>
 
 TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
-  std::array<int, 2> num_points = {10, 10};
-  Eigen::Vector2d min_coords(0.0, 0.0);
-  Eigen::Vector2d max_coords(10.0, 10.0);
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
   int number_of_points = 100;
   bool both_directions = true;
   double step_size = 0.1;
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
-  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
-                              point_clouds, number_of_points, both_directions,
-                              step_size, initial_frame);
 
-  Map<2> map(num_points, min_coords, max_coords);
+  MapArgs<2> map_args;
+  map_args.num_points = {10, 10};
+  map_args.min_coords = {0.0, 0.0};
+  map_args.max_coords = {10.0, 10.0};
 
-  for (int i = 0; i < num_points[0]; ++i) {
-    for (int j = 0; j < num_points[1]; ++j) {
-      Eigen::Vector2d point = {min_coords[0] + i * map.get_d(0),
-                               min_coords[1] + j * map.get_d(1)};
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
+                              both_directions, step_size, initial_frame);
+
+  Map<2> map(map_args);
+
+  for (int i = 0; i < map_args.num_points[0]; ++i) {
+    for (int j = 0; j < map_args.num_points[1]; ++j) {
+      Eigen::Vector2d point = {map_args.min_coords[0] + i * map.get_d(0),
+                               map_args.min_coords[1] + j * map.get_d(1)};
       map.set_value_at({i, j}, point.norm());
     }
   }
@@ -65,25 +68,27 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
 }
 
 TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
-  std::array<int, 2> num_points = {10, 10};
-  Eigen::Vector2d min_coords(0.0, 0.0);
-  Eigen::Vector2d max_coords(10.0, 10.0);
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
   int number_of_points = 100;
   bool both_directions = true;
   double step_size = 0.1;
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
-  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
-                              point_clouds, number_of_points, both_directions,
-                              step_size, initial_frame);
 
-  Map<2> map(num_points, min_coords, max_coords);
+  MapArgs<2> map_args;
+  map_args.num_points = {10, 10};
+  map_args.min_coords = {0.0, 0.0};
+  map_args.max_coords = {10.0, 10.0};
 
-  for (int i = 0; i < num_points[0]; ++i) {
-    for (int j = 0; j < num_points[1]; ++j) {
-      Eigen::Vector2d point = {min_coords[0] + i * map.get_d(0),
-                               min_coords[1] + j * map.get_d(1)};
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
+                              both_directions, step_size, initial_frame);
+
+  Map<2> map(map_args);
+
+  for (int i = 0; i < map_args.num_points[0]; ++i) {
+    for (int j = 0; j < map_args.num_points[1]; ++j) {
+      Eigen::Vector2d point = {map_args.min_coords[0] + i * map.get_d(0),
+                               map_args.min_coords[1] + j * map.get_d(1)};
       map.set_value_at({i, j}, point.norm());
     }
   }
@@ -111,25 +116,27 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
 }
 
 TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
-  std::array<int, 2> num_points = {10, 10};
-  Eigen::Vector2d min_coords(0.0, 0.0);
-  Eigen::Vector2d max_coords(10.0, 10.0);
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
   int number_of_points = 100;
   bool both_directions = true;
   double step_size = 0.1;
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
-  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
-                              point_clouds, number_of_points, both_directions,
-                              step_size, initial_frame);
 
-  Map<2> map(num_points, min_coords, max_coords);
+  MapArgs<2> map_args;
+  map_args.num_points = {10, 10};
+  map_args.min_coords = {0.0, 0.0};
+  map_args.max_coords = {10.0, 10.0};
 
-  for (int i = 0; i < num_points[0]; ++i) {
-    for (int j = 0; j < num_points[1]; ++j) {
-      Eigen::Vector2d point = {min_coords[0] + i * map.get_d(0),
-                               min_coords[1] + j * map.get_d(1)};
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
+                              both_directions, step_size, initial_frame);
+
+  Map<2> map(map_args);
+
+  for (int i = 0; i < map_args.num_points[0]; ++i) {
+    for (int j = 0; j < map_args.num_points[1]; ++j) {
+      Eigen::Vector2d point = {map_args.min_coords[0] + i * map.get_d(0),
+                               map_args.min_coords[1] + j * map.get_d(1)};
       map.set_value_at({i, j}, point.norm());
     }
   }
@@ -197,9 +204,6 @@ TEST(ObjectiveFunctorTest,
 }
 
 TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
-  std::array<int, 2> num_points = {10, 10};
-  Eigen::Vector2d min_coords(0.0, 0.0);
-  Eigen::Vector2d max_coords(10.0, 10.0);
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
   int number_of_points = 100;
   bool both_directions = true;
@@ -207,9 +211,14 @@ TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
 
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
-  ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
-                              point_clouds, number_of_points, both_directions,
-                              step_size, initial_frame);
+
+  MapArgs<2> map_args;
+  map_args.num_points = {10, 10};
+  map_args.min_coords = {0.0, 0.0};
+  map_args.max_coords = {10.0, 10.0};
+
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
+                              both_directions, step_size, initial_frame);
   Eigen::Vector2d point(1.0, 2.0);
   Eigen::Transform<double, 2, Eigen::Affine> transform =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
