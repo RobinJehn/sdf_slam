@@ -15,7 +15,8 @@ template <int Dim> struct ObjectiveFunctorCeres {
       const Vector &max_coords,
       const std::vector<pcl::PointCloud<PointType>> &point_clouds,
       const int number_of_points, const bool both_directions,
-      const double step_size, const int num_inputs, const int num_outputs);
+      const double step_size, const int num_inputs, const int num_outputs,
+      const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
   bool compute_residuals(const Eigen::VectorXd &x,
                          Eigen::VectorXd &residuals) const;
@@ -36,6 +37,9 @@ private:
   const double step_size_;
   const int num_inputs_;
   const int num_outputs_;
+
+  /** The initial frame is fixed */
+  const Eigen::Transform<double, Dim, Eigen::Affine> initial_frame_;
 };
 
 class ManualCostFunction : public ceres::CostFunction {

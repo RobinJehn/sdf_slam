@@ -61,10 +61,10 @@ int main(int argc, char *argv[]) {
   const int number_of_scanned_points = scan1->size() + scan2->size();
   const int number_of_residuals =
       number_of_scanned_points * (num_line_points + 1);
-  ObjectiveFunctor<2> functor(6 + map_size_x * map_size_y, number_of_residuals,
-                              num_points, min_coords.cast<double>(),
-                              max_coords.cast<double>(), point_clouds,
-                              num_line_points, both_directions, step_size);
+  ObjectiveFunctor<2> functor(
+      6 + map_size_x * map_size_y, number_of_residuals, num_points,
+      min_coords.cast<double>(), max_coords.cast<double>(), point_clouds,
+      num_line_points, both_directions, step_size, initial_frame);
 
   // Define the initial parameters for the optimization
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {

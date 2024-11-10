@@ -33,20 +33,27 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
       typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
   using Vector = std::conditional_t<Dim == 2, Eigen::Vector2d, Eigen::Vector3d>;
 
-  ObjectiveFunctor(const int num_inputs, const int num_outputs,
-                   const std::array<int, Dim> &num_points,
-                   const Vector &min_coords_, const Vector &max_coords_,
-                   const std::vector<pcl::PointCloud<PointType>> &point_clouds,
-                   const int number_of_points, const bool both_directions,
-                   const double step_size);
+  ObjectiveFunctor(
+      const int num_inputs, const int num_outputs,
+      const std::array<int, Dim> &num_points, const Vector &min_coords_,
+      const Vector &max_coords_,
+      const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+      const int number_of_points, const bool both_directions,
+      const double step_size,
+      const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
+  /**
+   * @brief Calculate the objective function (residuals) for a given input
+   * vector.
+   *
+   * @param x The map and transformation parameters (excluding the first
+   * transformation that is fixed).
+   * @param fvec Residuals of the objective function.
+   * @return Returns 0 to indicate success.
+   */
   int operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const;
 
   /** @brief Computes the sparse Jacobian matrix for a given input vector.
-   *
-   * This function calculates the Jacobian matrix in sparse format for the
-   * provided input vector `x`. The resulting Jacobian is stored in the
-   * `jacobian` parameter.
    *
    * @param x The input vector for which the Jacobian is to be computed.
    * @param jacobian The sparse matrix where the computed Jacobian will be
@@ -78,6 +85,9 @@ private:
   const int number_of_points_;
   const bool both_directions_;
   const double step_size_;
+
+  /** The initial frame is fixed */
+  const Eigen::Transform<double, Dim, Eigen::Affine> initial_frame_;
 
   /** @brief Computes the state and its derivatives for a given dimension.
    *

@@ -13,9 +13,11 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
   int number_of_points = 100;
   bool both_directions = true;
   double step_size = 0.1;
+  const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
+      Eigen::Transform<double, 2, Eigen::Affine>::Identity();
   ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
                               point_clouds, number_of_points, both_directions,
-                              step_size);
+                              step_size, initial_frame);
 
   Map<2> map(num_points, min_coords, max_coords);
 
@@ -70,9 +72,11 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
   int number_of_points = 100;
   bool both_directions = true;
   double step_size = 0.1;
+  const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
+      Eigen::Transform<double, 2, Eigen::Affine>::Identity();
   ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
                               point_clouds, number_of_points, both_directions,
-                              step_size);
+                              step_size, initial_frame);
 
   Map<2> map(num_points, min_coords, max_coords);
 
@@ -114,9 +118,11 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
   int number_of_points = 100;
   bool both_directions = true;
   double step_size = 0.1;
+  const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
+      Eigen::Transform<double, 2, Eigen::Affine>::Identity();
   ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
                               point_clouds, number_of_points, both_directions,
-                              step_size);
+                              step_size, initial_frame);
 
   Map<2> map(num_points, min_coords, max_coords);
 
@@ -199,9 +205,11 @@ TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
   bool both_directions = true;
   double step_size = 0.1;
 
+  const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
+      Eigen::Transform<double, 2, Eigen::Affine>::Identity();
   ObjectiveFunctor<2> functor(2, 3, num_points, min_coords, max_coords,
                               point_clouds, number_of_points, both_directions,
-                              step_size);
+                              step_size, initial_frame);
   Eigen::Vector2d point(1.0, 2.0);
   Eigen::Transform<double, 2, Eigen::Affine> transform =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();

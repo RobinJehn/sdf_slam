@@ -106,10 +106,12 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
  * @return An unflattened State object.
  */
 template <int Dim>
-State<Dim> unflatten(const Eigen::VectorXd &flattened_state,
-                     const std::array<int, Dim> &num_points,
-                     const Eigen::Matrix<double, Dim, 1> &min_coords,
-                     const Eigen::Matrix<double, Dim, 1> &max_coords);
+State<Dim>
+unflatten(const Eigen::VectorXd &flattened_state,
+          const std::array<int, Dim> &num_points,
+          const Eigen::Matrix<double, Dim, 1> &min_coords,
+          const Eigen::Matrix<double, Dim, 1> &max_coords,
+          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
 template <int Dim>
 int map_index_to_flattened_index(const std::array<int, Dim> &num_points,

@@ -13,20 +13,21 @@ ObjectiveFunctorCeres<Dim>::ObjectiveFunctorCeres(
     const Vector &max_coords,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
     const int number_of_points, const bool both_directions,
-    const double step_size, const int num_inputs, const int num_outputs)
+    const double step_size, const int num_inputs, const int num_outputs,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame)
     : num_map_points_(num_map_points), min_coords_(min_coords),
       max_coords_(max_coords), point_clouds_(point_clouds),
       number_of_points_(number_of_points), both_directions_(both_directions),
-      step_size_(step_size), num_inputs_(num_inputs),
-      num_outputs_(num_outputs) {}
+      step_size_(step_size), num_inputs_(num_inputs), num_outputs_(num_outputs),
+      initial_frame_(initial_frame) {}
 
 // Compute residuals
 template <int Dim>
 bool ObjectiveFunctorCeres<Dim>::compute_residuals(
     const Eigen::VectorXd &x, Eigen::VectorXd &residuals) const {
   // Unflatten state from parameters
-  State<Dim> state =
-      unflatten<Dim>(x, num_map_points_, min_coords_, max_coords_);
+  State<Dim> state = unflatten<Dim>(x, num_map_points_, min_coords_,
+                                    max_coords_, initial_frame_);
 
   // Compute residuals based on current state
   residuals = objective_vec<Dim>(state, point_clouds_, number_of_points_,
@@ -39,8 +40,8 @@ template <int Dim>
 void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
                                     Eigen::MatrixXd &jacobian) const {
   // Unflatten state from parameters
-  State<Dim> state =
-      unflatten<Dim>(x, num_map_points_, min_coords_, max_coords_);
+  State<Dim> state = unflatten<Dim>(x, num_map_points_, min_coords_,
+                                    max_coords_, initial_frame_);
 
   // Compute the Jacobian matrix using the derivatives of the map and
   // transformation
@@ -65,17 +66,20 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
       jacobian(i, flattened_index) = interpolation_weights[j];
     }
 
+    const int points_per_transform = point_value.size() / point_clouds_.size();
+    const int transformation_index = std::floor(i / points_per_transform);
+    if (transformation_index == 0) {
+      continue;
+    }
+
     // How the residual changes w.r.t. the transformation
     Eigen::Matrix<double, 1, Dim> dDF_dPoint =
         compute_analytical_derivative<Dim>(state.map_, point);
 
-    const int points_per_transform = point_value.size() / point_clouds_.size();
-    const int transformation_index = std::floor(i / points_per_transform);
-
     Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
         dPoint_dTransformation = compute_transformation_derivative<Dim>(
             point, state.transformations_[transformation_index],
-            /** numerical */ true);
+            /** numerical */ false);
 
     Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
         dDF_dPoint * dPoint_dTransformation;
@@ -84,8 +88,8 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
     for (int d = 0; d < Dim; ++d) {
       total_map_points *= num_map_points_[d];
     }
-    const int offset =
-        total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
+    const int offset = total_map_points +
+                       (transformation_index - 1) * (Dim + (Dim == 3 ? 3 : 1));
     for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
       jacobian(i, offset + d) = dDF_dTransformation(d);
     }

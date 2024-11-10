@@ -11,17 +11,19 @@ ObjectiveFunctor<Dim>::ObjectiveFunctor(
     const Vector &max_coords,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
     const int number_of_points, const bool both_directions,
-    const double step_size)
+    const double step_size,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame)
     : Functor<double>(num_inputs, num_outputs), point_clouds_(point_clouds),
       num_map_points_(num_map_points), min_coords_(min_coords),
       max_coords_(max_coords), number_of_points_(number_of_points),
-      both_directions_(both_directions), step_size_(step_size) {}
+      both_directions_(both_directions), step_size_(step_size),
+      initial_frame_(initial_frame) {}
 
 template <int Dim>
 int ObjectiveFunctor<Dim>::operator()(const Eigen::VectorXd &x,
                                       Eigen::VectorXd &fvec) const {
-  State<Dim> state =
-      unflatten<Dim>(x, num_map_points_, min_coords_, max_coords_);
+  State<Dim> state = unflatten<Dim>(x, num_map_points_, min_coords_,
+                                    max_coords_, initial_frame_);
 
   fvec = objective_vec<Dim>(state, point_clouds_, number_of_points_,
                             both_directions_, step_size_);
@@ -35,7 +37,8 @@ ObjectiveFunctor<Dim>::compute_state_and_derivatives(
     const Eigen::VectorXd &x, const std::array<int, Dim> &num_map_points,
     const Eigen::Matrix<double, Dim, 1> &min_coords,
     const Eigen::Matrix<double, Dim, 1> &max_coords) const {
-  State<Dim> state = unflatten<Dim>(x, num_map_points, min_coords, max_coords);
+  State<Dim> state =
+      unflatten<Dim>(x, num_map_points, min_coords, max_coords, initial_frame_);
   std::array<Map<Dim>, Dim> derivatives = state.map_.df();
   return std::make_pair(state, derivatives);
 }
@@ -51,25 +54,30 @@ void ObjectiveFunctor<Dim>::fill_jacobian_dense(
         &interpolation_point_indices,
     const Eigen::VectorXd &interpolation_weights,
     const int transformation_index) const {
-  int total_map_points = 1;
-  for (int d = 0; d < Dim; ++d) {
-    total_map_points *= num_map_points[d];
-  }
-  const int offset =
-      total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
-
-  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
-      dDF_dPoint * dPoint_dTransformation;
-  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
-    jacobian(i, offset + d) = dDF_dTransformation(d);
-  }
-
   for (int j = 0; j < interpolation_point_indices.size(); ++j) {
     const auto &index = interpolation_point_indices[j];
     const int flattened_index =
         map_index_to_flattened_index<Dim>(num_map_points_, index);
     const double weight = interpolation_weights[j];
     jacobian(i, flattened_index) = weight;
+  }
+
+  // Transformation 0 is fixed
+  if (transformation_index == 0) {
+    return;
+  }
+
+  int total_map_points = 1;
+  for (int d = 0; d < Dim; ++d) {
+    total_map_points *= num_map_points[d];
+  }
+  const int offset = total_map_points +
+                     (transformation_index - 1) * (Dim + (Dim == 3 ? 3 : 1));
+
+  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+      dDF_dPoint * dPoint_dTransformation;
+  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+    jacobian(i, offset + d) = dDF_dTransformation(d);
   }
 }
 
@@ -85,25 +93,32 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
         &interpolation_point_indices,
     const Eigen::VectorXd &interpolation_weights,
     const int transformation_index) const {
-  int total_map_points = 1;
-  for (int d = 0; d < Dim; ++d) {
-    total_map_points *= num_map_points[d];
-  }
-  const int offset =
-      total_map_points + transformation_index * (Dim + (Dim == 3 ? 3 : 1));
-
-  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
-      dDF_dPoint * dPoint_dTransformation;
-  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
-    jacobian.emplace_back(i, offset + d, dDF_dTransformation(d));
-  }
-
   for (int j = 0; j < interpolation_point_indices.size(); ++j) {
     const auto &index = interpolation_point_indices[j];
     const int flattened_index =
         map_index_to_flattened_index<Dim>(num_map_points_, index);
     const double weight = interpolation_weights[j];
     jacobian.emplace_back(i, flattened_index, weight);
+  }
+
+  // Transformation 0 is fixed
+  if (transformation_index == 0) {
+    return;
+  }
+
+  int total_map_points = 1;
+  for (int d = 0; d < Dim; ++d) {
+    total_map_points *= num_map_points[d];
+  }
+
+  const int offset = total_map_points +
+                     (transformation_index - 1) * (Dim + (Dim == 3 ? 3 : 1));
+
+  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+      dDF_dPoint * dPoint_dTransformation;
+
+  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+    jacobian.emplace_back(i, offset + d, dDF_dTransformation(d));
   }
 }
 

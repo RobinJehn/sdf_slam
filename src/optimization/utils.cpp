@@ -138,8 +138,8 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
   const int num_transformations = state.transformations_.size();
 
   Eigen::VectorXd flattened(
-      map_points + Dim * num_transformations +
-      (Dim == 3 ? 3 * num_transformations : num_transformations));
+      map_points + Dim * (num_transformations - 1) +
+      (Dim == 3 ? 3 * (num_transformations - 1) : (num_transformations - 1)));
 
   // Flatten the map
   int index = 0;
@@ -156,7 +156,8 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
   }
 
   // Flatten the transformations
-  for (const auto &transform : state.transformations_) {
+  for (size_t i = 1; i < state.transformations_.size(); ++i) {
+    const auto &transform = state.transformations_[i];
     const auto translation = transform.translation();
 
     Eigen::Matrix<double, Dim, 1> euler_angles;
@@ -167,13 +168,13 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
           std::atan2(transform.rotation()(1, 0), transform.rotation()(0, 0));
     }
 
-    for (int i = 0; i < Dim; ++i) {
-      flattened(index++) = translation[i];
+    for (int j = 0; j < Dim; ++j) {
+      flattened(index++) = translation[j];
     }
 
     if constexpr (Dim == 3) {
-      for (int i = 0; i < 3; ++i) {
-        flattened(index++) = euler_angles[i];
+      for (int j = 0; j < 3; ++j) {
+        flattened(index++) = euler_angles[j];
       }
     } else if constexpr (Dim == 2) {
       flattened(index++) = euler_angles[0];
@@ -184,15 +185,18 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
 }
 
 template <int Dim>
-State<Dim> unflatten(const Eigen::VectorXd &flattened_state,
-                     const std::array<int, Dim> &num_points,
-                     const Eigen::Matrix<double, Dim, 1> &min_coords,
-                     const Eigen::Matrix<double, Dim, 1> &max_coords) {
+State<Dim>
+unflatten(const Eigen::VectorXd &flattened_state,
+          const std::array<int, Dim> &num_points,
+          const Eigen::Matrix<double, Dim, 1> &min_coords,
+          const Eigen::Matrix<double, Dim, 1> &max_coords,
+          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame) {
   const int num_transformations =
       (flattened_state.size() - std::accumulate(num_points.begin(),
                                                 num_points.end(), 1,
                                                 std::multiplies<int>())) /
-      (Dim + (Dim == 3 ? 3 : 1)); // 3 for Euler angles, 1 for angle
+          (Dim + (Dim == 3 ? 3 : 1)) + // 3 for Euler angles, 1 for angle
+      1;                               // + 1 for initial frame
 
   Map<Dim> map(num_points, min_coords, max_coords);
 
@@ -213,25 +217,27 @@ State<Dim> unflatten(const Eigen::VectorXd &flattened_state,
   // Unflatten the transformations
   std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> transforms(
       num_transformations);
-  for (auto &transform : transforms) {
+  transforms[0] = initial_frame;
+  for (size_t i = 1; i < transforms.size(); ++i) {
     Eigen::Matrix<double, Dim, 1> translation;
-    for (int i = 0; i < Dim; ++i) {
-      translation[i] = flattened_state(index++);
+    for (int j = 0; j < Dim; ++j) {
+      translation[j] = flattened_state(index++);
     }
 
     if constexpr (Dim == 3) {
       Eigen::Matrix<double, 3, 1> euler_angles;
-      for (int i = 0; i < 3; ++i) {
-        euler_angles[i] = flattened_state(index++);
+      for (int j = 0; j < 3; ++j) {
+        euler_angles[j] = flattened_state(index++);
       }
-      transform = Eigen::Translation<double, Dim>(translation) *
-                  Eigen::AngleAxisd(euler_angles[0], Eigen::Vector3d::UnitX()) *
-                  Eigen::AngleAxisd(euler_angles[1], Eigen::Vector3d::UnitY()) *
-                  Eigen::AngleAxisd(euler_angles[2], Eigen::Vector3d::UnitZ());
+      transforms[i] =
+          Eigen::Translation<double, Dim>(translation) *
+          Eigen::AngleAxisd(euler_angles[0], Eigen::Vector3d::UnitX()) *
+          Eigen::AngleAxisd(euler_angles[1], Eigen::Vector3d::UnitY()) *
+          Eigen::AngleAxisd(euler_angles[2], Eigen::Vector3d::UnitZ());
     } else if constexpr (Dim == 2) {
       double euler_angle = flattened_state(index++);
-      transform = Eigen::Translation<double, Dim>(translation) *
-                  Eigen::Rotation2Dd(euler_angle);
+      transforms[i] = Eigen::Translation<double, Dim>(translation) *
+                      Eigen::Rotation2Dd(euler_angle);
     }
   }
 
@@ -656,14 +662,18 @@ compute_derivative_map_value_wrt_transformation_numerical(
 // Explicit template instantiation
 template Eigen::VectorXd flatten<2>(const State<2> &state);
 template Eigen::VectorXd flatten<3>(const State<3> &state);
-template State<2> unflatten<2>(const Eigen::VectorXd &flattened_state,
-                               const std::array<int, 2> &num_points,
-                               const Eigen::Matrix<double, 2, 1> &min_coords,
-                               const Eigen::Matrix<double, 2, 1> &max_coords);
-template State<3> unflatten<3>(const Eigen::VectorXd &flattened_state,
-                               const std::array<int, 3> &num_points,
-                               const Eigen::Matrix<double, 3, 1> &min_coords,
-                               const Eigen::Matrix<double, 3, 1> &max_coords);
+template State<2>
+unflatten<2>(const Eigen::VectorXd &flattened_state,
+             const std::array<int, 2> &num_points,
+             const Eigen::Matrix<double, 2, 1> &min_coords,
+             const Eigen::Matrix<double, 2, 1> &max_coords,
+             const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame);
+template State<3>
+unflatten<3>(const Eigen::VectorXd &flattened_state,
+             const std::array<int, 3> &num_points,
+             const Eigen::Matrix<double, 3, 1> &min_coords,
+             const Eigen::Matrix<double, 3, 1> &max_coords,
+             const Eigen::Transform<double, 3, Eigen::Affine> &initial_frame);
 template int
 map_index_to_flattened_index<2>(const std::array<int, 2> &num_points,
                                 const typename Map<2>::index_t &index);

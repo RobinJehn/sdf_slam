@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   pcl::PointCloud<pcl::PointXY>::Ptr scan2 = scans.second;
 
   // Define map parameters
-  constexpr double x_min = -1, x_max = 2 * M_PI + 1, y_min = -6, y_max = 2;
+  constexpr double x_min = -3, x_max = 2 * M_PI + 3, y_min = -8, y_max = 4;
   constexpr int map_size_x = 50, map_size_y = 50;
 
   // Initialize the map
@@ -104,13 +104,14 @@ int main(int argc, char *argv[]) {
   constexpr int number_of_scanned_points = 2 * num_scan_points;
   constexpr int num_residuals =
       number_of_scanned_points * (num_line_points + 1);
-  constexpr int num_parameters = 6 + map_size_x * map_size_y;
+  const int num_parameters =
+      (point_clouds.size() - 1) * 3 + map_size_x * map_size_y;
 
   // Objective Functor for 2D with Ceres
   ObjectiveFunctorCeres<2> *functor = new ObjectiveFunctorCeres<2>(
       {map_size_x, map_size_y}, {x_min, y_min}, {x_max, y_max}, point_clouds,
       num_line_points, both_directions, step_size, num_parameters,
-      num_residuals);
+      num_residuals, initial_frame_1);
 
   // Flatten the state into the parameter vector
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {
@@ -130,11 +131,12 @@ int main(int argc, char *argv[]) {
 
   // Set solver options
   ceres::Solver::Options options;
-  // options.check_gradients = true;
-  // options.gradient_check_relative_precision = 1e-4;
+  options.check_gradients = true;
+  // options.gradient_check_numeric_derivative_relative_step_size = 1e-8;
+  options.gradient_check_relative_precision = 1e-4;
   options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
   options.minimizer_progress_to_stdout = true;
-  options.max_num_iterations = 100;
+  options.max_num_iterations = 10;
   options.num_threads = 4;
 
   // Solve the problem
@@ -145,8 +147,9 @@ int main(int argc, char *argv[]) {
   save_summary_to_file("optimization_summary.txt", summary);
 
   // Unflatten the optimized parameters back into the state
-  State<2> optimized_state = unflatten<2>(params, {map_size_x, map_size_y},
-                                          {x_min, y_min}, {x_max, y_max});
+  State<2> optimized_state =
+      unflatten<2>(params, {map_size_x, map_size_y}, {x_min, y_min},
+                   {x_max, y_max}, initial_frame_1);
 
   plot_map(optimized_state.map_, map_size_x, map_size_y, x_min, x_max, y_min,
            y_max, "Optimized Map");

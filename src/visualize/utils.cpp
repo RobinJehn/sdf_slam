@@ -144,13 +144,15 @@ scan_to_global(const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>>
   return global_points;
 }
 
-void visualizeMap(const Eigen::VectorXd &params,
-                  const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-                  const std::array<int, 2> &num_map_points,
-                  const Eigen::Vector2d &min_coords,
-                  const Eigen::Vector2d &max_coords, const int output_width,
-                  const int output_height) {
-  State<2> state = unflatten<2>(params, num_map_points, min_coords, max_coords);
+void visualizeMap(
+    const Eigen::VectorXd &params,
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
+    const std::array<int, 2> &num_map_points, const Eigen::Vector2d &min_coords,
+    const Eigen::Vector2d &max_coords,
+    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+    const int output_width, const int output_height) {
+  State<2> state = unflatten<2>(params, num_map_points, min_coords, max_coords,
+                                initial_frame);
 
   std::vector<Eigen::Vector2d> global_points =
       scan_to_global<2>(state.transformations_, scans);
