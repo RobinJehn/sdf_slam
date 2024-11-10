@@ -145,22 +145,16 @@ int main() {
   auto scans = create_scans(pos1, theta1, pos2, theta2);
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scans.first,
                                                              *scans.second};
-
-  const int map_points_x = 200;
-  const int map_points_y = 200;
-
-  const double x_min = -3;
-  const double x_max = 2 * M_PI + 3;
-  const double y_min = -8;
-  const double y_max = 4;
-  const int number_of_points = 20;
-  const bool both_directions = true;
-  const double step_size = 0.1;
   const bool visualize = false;
   const bool from_ground_truth = true;
 
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 20;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
+
   MapArgs<2> map_args;
-  map_args.num_points = {map_points_x, map_points_y};
+  map_args.num_points = {200, 200};
   map_args.min_coords = Eigen::Vector2d(-3, -8);
   map_args.max_coords = Eigen::Vector2d(2 * M_PI + 3, 4);
 
@@ -181,13 +175,12 @@ int main() {
   const std::vector<Eigen::Transform<double, 2, Eigen::Affine>>
       transformations = {initial_frame, initial_frame_2};
 
-  ObjectiveFunctor<2> functor(
-      (transformations.size() - 1) * 3 + map_points_x * map_points_y,
-      (scans.first->size() + scans.second->size()) * (number_of_points + 1),
-      map_args, point_clouds, number_of_points, both_directions, step_size,
-      initial_frame);
-
   Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
+  ObjectiveFunctor<2> functor(params.size(),
+                              (scans.first->size() + scans.second->size()) *
+                                  (objective_args.number_of_points + 1),
+                              map_args, point_clouds, objective_args,
+                              initial_frame);
 
   cholmod_common c;
   cholmod_start(&c);

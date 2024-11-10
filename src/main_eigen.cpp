@@ -56,16 +56,17 @@ int main(int argc, char *argv[]) {
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scan1, *scan2};
 
   // Create the objective functor
-  const bool both_directions = true;
-  const double step_size = 0.1;
-  const int num_line_points = 20;
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 20;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
 
   const int number_of_scanned_points = scan1->size() + scan2->size();
   const int number_of_residuals =
-      number_of_scanned_points * (num_line_points + 1);
+      number_of_scanned_points * (objective_args.number_of_points + 1);
   ObjectiveFunctor<2> functor(6 + map_size_x * map_size_y, number_of_residuals,
-                              map_args, point_clouds, num_line_points,
-                              both_directions, step_size, initial_frame);
+                              map_args, point_clouds, objective_args,
+                              initial_frame);
 
   // Define the initial parameters for the optimization
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {

@@ -1,6 +1,7 @@
 #pragma once
 #include "map/map.hpp"
 #include "map/utils.hpp"
+#include "optimization/utils.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <array>
@@ -37,8 +38,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
   ObjectiveFunctor(
       const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
       const std::vector<pcl::PointCloud<PointType>> &point_clouds,
-      const int number_of_points, const bool both_directions,
-      const double step_size,
+      const ObjectiveArgs &objective_args,
       const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
   /**
@@ -75,11 +75,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
 private:
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
   const MapArgs<Dim> map_args_;
-
-  /** Parameters for point line residuals */
-  const int number_of_points_;
-  const bool both_directions_;
-  const double step_size_;
+  const ObjectiveArgs objective_args_;
 
   /** The initial frame is fixed */
   const Eigen::Transform<double, Dim, Eigen::Affine> initial_frame_;

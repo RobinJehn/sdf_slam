@@ -11,13 +11,12 @@ template <int Dim>
 ObjectiveFunctorCeres<Dim>::ObjectiveFunctorCeres(
     const MapArgs<Dim> &map_args,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size, const int num_inputs, const int num_outputs,
+    const ObjectiveArgs &objective_args, const int num_inputs,
+    const int num_outputs,
     const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame)
-    : map_args_(map_args), point_clouds_(point_clouds),
-      number_of_points_(number_of_points), both_directions_(both_directions),
-      step_size_(step_size), num_inputs_(num_inputs), num_outputs_(num_outputs),
-      initial_frame_(initial_frame) {}
+    : map_args_(map_args), objective_args_(objective_args),
+      point_clouds_(point_clouds), num_inputs_(num_inputs),
+      num_outputs_(num_outputs), initial_frame_(initial_frame) {}
 
 // Compute residuals
 template <int Dim>
@@ -25,8 +24,7 @@ bool ObjectiveFunctorCeres<Dim>::compute_residuals(
     const Eigen::VectorXd &x, Eigen::VectorXd &residuals) const {
   // Unflatten the state and compute the residuals
   State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
-  residuals = objective_vec<Dim>(state, point_clouds_, number_of_points_,
-                                 both_directions_, step_size_);
+  residuals = objective_vec<Dim>(state, point_clouds_, objective_args_);
   return true;
 }
 
@@ -43,7 +41,7 @@ void ObjectiveFunctorCeres<Dim>::df(const Eigen::VectorXd &x,
   jacobian = Eigen::MatrixXd::Zero(num_outputs(), num_inputs());
 
   const auto &point_value = generate_points_and_desired_values<Dim>(
-      state, point_clouds_, number_of_points_, both_directions_, step_size_);
+      state, point_clouds_, objective_args_);
 
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];

@@ -107,19 +107,21 @@ int main(int argc, char *argv[]) {
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scan1, *scan2};
 
   // Set up optimization parameters
-  const bool both_directions = true;
-  constexpr int num_line_points = 20;
-  const double step_size = 0.1;
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 20;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
+
   constexpr int number_of_scanned_points = 2 * num_scan_points;
-  constexpr int num_residuals =
-      number_of_scanned_points * (num_line_points + 1);
+  const int num_residuals =
+      number_of_scanned_points * (objective_args.number_of_points + 1);
   const int num_parameters =
       (point_clouds.size() - 1) * 3 + map_size_x * map_size_y;
 
   // Objective Functor for 2D with Ceres
   ObjectiveFunctorCeres<2> *functor = new ObjectiveFunctorCeres<2>(
-      map_args, point_clouds, num_line_points, both_directions, step_size,
-      num_parameters, num_residuals, initial_frame_1);
+      map_args, point_clouds, objective_args, num_parameters, num_residuals,
+      initial_frame_1);
 
   // Flatten the state into the parameter vector
   std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {

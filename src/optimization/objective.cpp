@@ -8,12 +8,10 @@ template <int Dim>
 ObjectiveFunctor<Dim>::ObjectiveFunctor(
     const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size,
+    const ObjectiveArgs &objective_args,
     const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame)
     : Functor<double>(num_inputs, num_outputs), point_clouds_(point_clouds),
-      map_args_(map_args), number_of_points_(number_of_points),
-      both_directions_(both_directions), step_size_(step_size),
+      map_args_(map_args), objective_args_(objective_args),
       initial_frame_(initial_frame) {}
 
 template <int Dim>
@@ -21,8 +19,7 @@ int ObjectiveFunctor<Dim>::operator()(const Eigen::VectorXd &x,
                                       Eigen::VectorXd &fvec) const {
   State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
 
-  fvec = objective_vec<Dim>(state, point_clouds_, number_of_points_,
-                            both_directions_, step_size_);
+  fvec = objective_vec<Dim>(state, point_clouds_, objective_args_);
 
   return 0;
 }
@@ -121,8 +118,8 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
   const auto [state, derivatives] = compute_state_and_derivatives(x, map_args_);
   jacobian.setZero(values(), inputs());
 
-  const auto &point_value = generate_points_and_desired_values(
-      state, point_clouds_, number_of_points_, both_directions_, step_size_);
+  const auto &point_value =
+      generate_points_and_desired_values(state, point_clouds_, objective_args_);
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
     auto [interpolation_indices, interpolation_weights] =
@@ -149,8 +146,8 @@ int ObjectiveFunctor<Dim>::sparse_df(
   const auto [state, derivatives] = compute_state_and_derivatives(x, map_args_);
   std::vector<Eigen::Triplet<double>> tripletList;
 
-  const auto &point_value = generate_points_and_desired_values(
-      state, point_clouds_, number_of_points_, both_directions_, step_size_);
+  const auto &point_value =
+      generate_points_and_desired_values(state, point_clouds_, objective_args_);
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
     if (!state.map_.in_bounds(point)) {

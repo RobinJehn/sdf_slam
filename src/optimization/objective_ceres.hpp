@@ -1,5 +1,6 @@
 #pragma once
 #include "map/utils.hpp"
+#include "optimization/utils.hpp"
 #include <Eigen/Dense>
 #include <ceres/ceres.h>
 #include <pcl/point_cloud.h>
@@ -14,8 +15,8 @@ template <int Dim> struct ObjectiveFunctorCeres {
   ObjectiveFunctorCeres(
       const MapArgs<Dim> &map_args,
       const std::vector<pcl::PointCloud<PointType>> &point_clouds,
-      const int number_of_points, const bool both_directions,
-      const double step_size, const int num_inputs, const int num_outputs,
+      const ObjectiveArgs &objective_args, const int num_inputs,
+      const int num_outputs,
       const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
   bool compute_residuals(const Eigen::VectorXd &x,
@@ -29,11 +30,8 @@ template <int Dim> struct ObjectiveFunctorCeres {
 
 private:
   const MapArgs<Dim> map_args_;
-
+  const ObjectiveArgs objective_args_;
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
-  const int number_of_points_;
-  const bool both_directions_;
-  const double step_size_;
   const int num_inputs_;
   const int num_outputs_;
 

@@ -321,10 +321,8 @@ Eigen::VectorXd
 objective_vec(const State<Dim> &state,
               const std::vector<pcl::PointCloud<typename std::conditional<
                   Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
-              const int number_of_points, const bool both_directions,
-              const double step_size) {
-  return compute_residuals(state, point_clouds, number_of_points,
-                           both_directions, step_size);
+              const ObjectiveArgs &objective_args) {
+  return compute_residuals(state, point_clouds, objective_args);
 }
 
 template <int Dim>
@@ -334,8 +332,7 @@ generate_points_and_desired_values(
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size) {
+    const ObjectiveArgs &objective_args) {
   assert(state.transformations_.size() == point_clouds.size() &&
          "Number of transformations must match number of point clouds");
 
@@ -354,7 +351,7 @@ generate_points_and_desired_values(
       scanner_cloud_with_extra_points.push_back(point);
       scanner_cloud_with_extra_points_values.push_back(0.0);
 
-      if (number_of_points > 0) {
+      if (objective_args.number_of_points > 0) {
         Eigen::Matrix<double, Dim, 1> point_vector;
         point_vector[0] = point.x;
         point_vector[1] = point.y;
@@ -363,8 +360,10 @@ generate_points_and_desired_values(
         }
 
         Eigen::Matrix<double, Dim, 1> vector_to_origin =
-            -point_vector.normalized() * step_size;
-        int desired_points = number_of_points / (both_directions ? 2 : 1) + 1;
+            -point_vector.normalized() * objective_args.step_size;
+        int desired_points = objective_args.number_of_points /
+                                 (objective_args.both_directions ? 2 : 1) +
+                             1;
         for (int j = 1; j < desired_points; ++j) {
           Eigen::Matrix<double, Dim, 1> new_point_vector =
               point_vector + vector_to_origin * j;
@@ -377,9 +376,10 @@ generate_points_and_desired_values(
             point_plc.z = new_point_vector[2];
           }
           scanner_cloud_with_extra_points.push_back(point_plc);
-          scanner_cloud_with_extra_points_values.push_back(step_size * j);
+          scanner_cloud_with_extra_points_values.push_back(
+              objective_args.step_size * j);
 
-          if (both_directions) {
+          if (objective_args.both_directions) {
             Eigen::Matrix<double, Dim, 1> new_point_vector_neg =
                 point_vector - vector_to_origin * j;
 
@@ -391,7 +391,8 @@ generate_points_and_desired_values(
               point_plc_neg.z = new_point_vector_neg[2];
             }
             scanner_cloud_with_extra_points.push_back(point_plc_neg);
-            scanner_cloud_with_extra_points_values.push_back(-step_size * j);
+            scanner_cloud_with_extra_points_values.push_back(
+                -objective_args.step_size * j);
           }
         }
       }
@@ -426,10 +427,9 @@ Eigen::VectorXd compute_residuals(
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size) {
-  const auto &point_value = generate_points_and_desired_values(
-      state, point_clouds, number_of_points, both_directions, step_size);
+    const ObjectiveArgs &objective_args) {
+  const auto &point_value =
+      generate_points_and_desired_values(state, point_clouds, objective_args);
 
   Eigen::VectorXd residuals(point_value.size());
   for (int i = 0; i < point_value.size(); ++i) {
@@ -699,13 +699,11 @@ get_interpolation_values<3>(const Eigen::Matrix<double, 3, 1> &p,
 template Eigen::VectorXd
 objective_vec<2>(const State<2> &state,
                  const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
-                 const int number_of_points, const bool both_directions,
-                 const double step_size);
+                 const ObjectiveArgs &objective_args);
 template Eigen::VectorXd objective_vec<3>(
     const State<3> &state,
     const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size);
+    const ObjectiveArgs &objective_args);
 
 template Eigen::Matrix<double, 2, 1>
 compute_analytical_derivative<2>(const Map<2> &map,

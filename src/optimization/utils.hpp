@@ -1,3 +1,5 @@
+#pragma once
+
 #include "map/utils.hpp"
 #include "state/state.hpp"
 #include <Eigen/Dense>
@@ -6,9 +8,9 @@
 
 struct ObjectiveArgs {
   // Scan lines
-  int number_of_points; // Number of points along the scan line
-  double step_size;     // Step size between points
-  bool both_directions; // Whether to add points in both directions
+  int number_of_points = 20;   // Number of points along the scan line
+  double step_size = 0.1;      // Step size between points
+  bool both_directions = true; // Whether to add points in both directions
 };
 
 struct OptimizationArgs {
@@ -207,8 +209,7 @@ generate_points_and_desired_values(
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size);
+    const ObjectiveArgs &objective_args);
 
 template <int Dim>
 Eigen::VectorXd compute_residuals(
@@ -216,16 +217,14 @@ Eigen::VectorXd compute_residuals(
     const std::vector<pcl::PointCloud<
         typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
-    const int number_of_points, const bool both_directions,
-    const double step_size);
+    const ObjectiveArgs &objective_args);
 
 template <int Dim>
 Eigen::VectorXd
 objective_vec(const State<Dim> &state,
               const std::vector<pcl::PointCloud<typename std::conditional<
                   Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
-              const int number_of_points, const bool both_directions,
-              const double step_size);
+              const ObjectiveArgs &objective_args);
 
 /**
  * @brief Compute the analytical derivative of a map at a given point with

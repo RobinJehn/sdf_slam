@@ -8,9 +8,6 @@
 
 TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
-  int number_of_points = 100;
-  bool both_directions = true;
-  double step_size = 0.1;
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
 
@@ -19,8 +16,13 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
   map_args.min_coords = {0.0, 0.0};
   map_args.max_coords = {10.0, 10.0};
 
-  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
-                              both_directions, step_size, initial_frame);
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 100;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
+
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, objective_args,
+                              initial_frame);
 
   Map<2> map(map_args);
 
@@ -69,9 +71,6 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestAnalyticNumerical) {
 
 TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
-  int number_of_points = 100;
-  bool both_directions = true;
-  double step_size = 0.1;
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
 
@@ -80,8 +79,13 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
   map_args.min_coords = {0.0, 0.0};
   map_args.max_coords = {10.0, 10.0};
 
-  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
-                              both_directions, step_size, initial_frame);
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 100;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
+
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, objective_args,
+                              initial_frame);
 
   Map<2> map(map_args);
 
@@ -117,9 +121,6 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateAnalytic) {
 
 TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
-  int number_of_points = 100;
-  bool both_directions = true;
-  double step_size = 0.1;
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
 
@@ -128,8 +129,13 @@ TEST(ObjectiveFunctorTest, DistanceDerivativeTestApproximateNumerical) {
   map_args.min_coords = {0.0, 0.0};
   map_args.max_coords = {10.0, 10.0};
 
-  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
-                              both_directions, step_size, initial_frame);
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 100;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
+
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, objective_args,
+                              initial_frame);
 
   Map<2> map(map_args);
 
@@ -205,10 +211,6 @@ TEST(ObjectiveFunctorTest,
 
 TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
   std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds;
-  int number_of_points = 100;
-  bool both_directions = true;
-  double step_size = 0.1;
-
   const Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
 
@@ -217,8 +219,13 @@ TEST(ObjectiveFunctorTest, ComputeTransformationDerivative2D) {
   map_args.min_coords = {0.0, 0.0};
   map_args.max_coords = {10.0, 10.0};
 
-  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, number_of_points,
-                              both_directions, step_size, initial_frame);
+  ObjectiveArgs objective_args;
+  objective_args.number_of_points = 100;
+  objective_args.step_size = 0.1;
+  objective_args.both_directions = true;
+
+  ObjectiveFunctor<2> functor(2, 3, map_args, point_clouds, objective_args,
+                              initial_frame);
   Eigen::Vector2d point(1.0, 2.0);
   Eigen::Transform<double, 2, Eigen::Affine> transform =
       Eigen::Transform<double, 2, Eigen::Affine>::Identity();
