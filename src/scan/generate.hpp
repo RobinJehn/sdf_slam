@@ -37,7 +37,7 @@ Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta);
  *
  * @return A pointer to the generated point cloud.
  */
-pcl::PointCloud<pcl::PointXY>::Ptr
+pcl::PointCloud<pcl::PointXY>
 create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
             const double angle_range, const int num_points);
 
@@ -53,12 +53,9 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
  *
  * @return Point clouds
  */
-std::pair<pcl::PointCloud<pcl::PointXY>::Ptr,
-          pcl::PointCloud<pcl::PointXY>::Ptr>
-create_scans(const Eigen::Vector2d &scanner_position_1,
-             const double theta_scanner_1,
-             const Eigen::Vector2d &scanner_position_2,
-             const double theta_scanner_2, const int num_points = 100,
+std::vector<pcl::PointCloud<pcl::PointXY>>
+create_scans(const std::vector<Eigen::Vector2d> &scanner_positions,
+             const std::vector<double> &thetas, const int num_points = 100,
              const double angle_range = M_PI / 4);
 
 /**

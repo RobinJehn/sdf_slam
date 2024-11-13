@@ -70,12 +70,12 @@ Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta) {
                          laser_path(x0 + max_steps * step));
 }
 
-pcl::PointCloud<pcl::PointXY>::Ptr
+pcl::PointCloud<pcl::PointXY>
 create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
             const double angle_range, const int num_points) {
-  pcl::PointCloud<pcl::PointXY>::Ptr scan(new pcl::PointCloud<pcl::PointXY>);
+  pcl::PointCloud<pcl::PointXY> scan;
 
-  scan->points.reserve(num_points);
+  scan.points.reserve(num_points);
   for (int i = 0; i < num_points; ++i) {
     double angle =
         theta_scanner - angle_range / 2 + i * angle_range / (num_points - 1);
@@ -83,11 +83,11 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
     pcl::PointXY pcl_point;
     pcl_point.x = point.x();
     pcl_point.y = point.y();
-    scan->points.push_back(pcl_point);
+    scan.points.push_back(pcl_point);
   }
 
-  scan->width = scan->points.size();
-  scan->height = 1;
+  scan.width = scan.points.size();
+  scan.height = 1;
 
   // Transform the scan into the scanner frame
   Eigen::Translation<double, 2> translation(scanner_position.x(),
@@ -95,25 +95,26 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
   Eigen::Rotation2Dd rotation(theta_scanner);
   Eigen::Transform<double, 2, Eigen::Affine> transform = translation * rotation;
 
-  pcl::transformPointCloud(*scan, *scan,
+  pcl::transformPointCloud(scan, scan,
                            transform.inverse().template cast<float>());
 
   return scan;
 }
 
 // Function to create two scans
-std::pair<pcl::PointCloud<pcl::PointXY>::Ptr,
-          pcl::PointCloud<pcl::PointXY>::Ptr>
-create_scans(const Eigen::Vector2d &scanner_position_1,
-             const double theta_scanner_1,
-             const Eigen::Vector2d &scanner_position_2,
-             const double theta_scanner_2, const int num_points,
+
+std::vector<pcl::PointCloud<pcl::PointXY>>
+create_scans(const std::vector<Eigen::Vector2d> &scanner_positions,
+             const std::vector<double> &thetas, const int num_points,
              const double angle_range) {
-  auto scan_1 =
-      create_scan(scanner_position_1, theta_scanner_1, angle_range, num_points);
-  auto scan_2 =
-      create_scan(scanner_position_2, theta_scanner_2, angle_range, num_points);
-  return {scan_1, scan_2};
+
+  std::vector<pcl::PointCloud<pcl::PointXY>> scans;
+  for (int i = 0; i < scanner_positions.size(); ++i) {
+    scans.push_back(
+        create_scan(scanner_positions[i], thetas[i], angle_range, num_points));
+  }
+
+  return scans;
 }
 
 double distance_squared(double x, double x0, double y0) {

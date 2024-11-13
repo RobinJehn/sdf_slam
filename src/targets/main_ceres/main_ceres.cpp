@@ -68,12 +68,11 @@ int main(int argc, char *argv[]) {
   double theta_scanner_2 = 8 * M_PI / 16;
 
   // Create the scans
-  constexpr int num_scan_points = 100;
-  auto scans =
-      create_scans(scanner_position_1, theta_scanner_1, scanner_position_2,
-                   theta_scanner_2, num_scan_points);
-  pcl::PointCloud<pcl::PointXY>::Ptr scan1 = scans.first;
-  pcl::PointCloud<pcl::PointXY>::Ptr scan2 = scans.second;
+  const std::vector<Eigen::Vector2d> scanner_positions = {scanner_position_1,
+                                                          scanner_position_2};
+  const std::vector<double> thetas = {theta_scanner_1, theta_scanner_2};
+  const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds =
+      create_scans(scanner_positions, thetas);
 
   // Define map parameters
   constexpr double x_min = -3;
@@ -103,16 +102,14 @@ int main(int argc, char *argv[]) {
       Eigen::Translation<double, 2>(scanner_position_2) *
       Eigen::Rotation2D<double>(theta_scanner_2);
 
-  // Create the point clouds vector
-  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scan1, *scan2};
-
   // Set up optimization parameters
   ObjectiveArgs objective_args;
   objective_args.scanline_points = 20;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
-  constexpr int number_of_scanned_points = 2 * num_scan_points;
+  const int number_of_scanned_points =
+      point_clouds[0].size() * point_clouds.size();
   const int num_residuals =
       number_of_scanned_points * (objective_args.scanline_points + 1);
   const int num_parameters =

@@ -131,15 +131,17 @@ int main() {
     const double theta2 = 8 * M_PI / 16;
     const Eigen::Vector2d pos2 = {4, -5};
 
-    auto scans = create_scans(pos1, theta1, pos2, theta2);
-    std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scans.first,
-                                                               *scans.second};
+    const std::vector<Eigen::Vector2d> scanner_positions = {pos1, pos2};
+    const std::vector<double> thetas = {theta1, theta2};
+    const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds =
+        create_scans(scanner_positions, thetas);
+
     const bool visualize = false;
     const bool from_ground_truth = true;
 
     Args<2> args = setup_from_yaml<2>("../config/sdf.yml");
 
-    const int num_points = point_clouds[0].size() + point_clouds[1].size();
+    const int num_points = point_clouds[0].size() * point_clouds.size();
     const int num_residuals =
         num_points * (args.objective_args.scanline_points + 1);
 

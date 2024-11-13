@@ -9,21 +9,21 @@
 #include <opencv2/opencv.hpp>
 
 int main(int argc, char *argv[]) {
-  double x_scanner_1 = 3.5;
-  double y_scanner_1 = -5;
-  double theta_scanner_1 = 9 * M_PI / 16;
-  Eigen::Vector2d scanner_position_1(x_scanner_1, y_scanner_1);
+  const double x_scanner_1 = 3.5;
+  const double y_scanner_1 = -5;
+  const double theta_scanner_1 = 9 * M_PI / 16;
+  const Eigen::Vector2d scanner_position_1(x_scanner_1, y_scanner_1);
 
-  double x_scanner_2 = 4;
-  double y_scanner_2 = -5;
-  double theta_scanner_2 = 8 * M_PI / 16;
-  Eigen::Vector2d scanner_position_2(x_scanner_2, y_scanner_2);
+  const double x_scanner_2 = 4;
+  const double y_scanner_2 = -5;
+  const double theta_scanner_2 = 8 * M_PI / 16;
+  const Eigen::Vector2d scanner_position_2(x_scanner_2, y_scanner_2);
 
-  auto scans = create_scans(scanner_position_1, theta_scanner_1,
-                            scanner_position_2, theta_scanner_2);
-
-  pcl::PointCloud<pcl::PointXY>::Ptr scan1 = scans.first;
-  pcl::PointCloud<pcl::PointXY>::Ptr scan2 = scans.second;
+  const std::vector<Eigen::Vector2d> scanner_positions = {scanner_position_1,
+                                                          scanner_position_2};
+  const std::vector<double> thetas = {theta_scanner_1, theta_scanner_2};
+  const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds =
+      create_scans(scanner_positions, thetas);
 
   // Define the parameters for the optimization
   double x_min = -1;
@@ -52,16 +52,14 @@ int main(int argc, char *argv[]) {
       Eigen::Translation<double, 2>(scanner_position_2) *
       Eigen::Rotation2D<double>(static_cast<double>(theta_scanner_2));
 
-  // Create the point clouds vector
-  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scan1, *scan2};
-
   // Create the objective functor
   ObjectiveArgs objective_args;
   objective_args.scanline_points = 20;
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
-  const int number_of_scanned_points = scan1->size() + scan2->size();
+  const int number_of_scanned_points =
+      point_clouds[0].size() * point_clouds.size();
   const int number_of_residuals =
       number_of_scanned_points * (objective_args.scanline_points + 1);
   ObjectiveFunctor<2> functor(6 + map_size_x * map_size_y, number_of_residuals,

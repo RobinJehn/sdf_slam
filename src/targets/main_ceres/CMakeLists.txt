@@ -24,11 +24,6 @@ add_executable(sdf_slam_ceres ${SRC_FILES})
 # Include directories
 target_include_directories(sdf_slam_ceres PRIVATE
     ${SRC_DIR}
-    ${SRC_DIR}/map
-    ${SRC_DIR}/scan
-    ${SRC_DIR}/state
-    ${SRC_DIR}/optimization
-    ${SRC_DIR}/visualize
 )
 
 # Link external libraries
