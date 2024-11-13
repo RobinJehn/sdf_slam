@@ -10,3 +10,7 @@ endif()
 if(BUILD_MAIN_CERES)
     add_subdirectory(main_ceres)
 endif()
+
+if(BUILD_GENERATE_SCAN)
+    add_subdirectory(generate_scan)
+endif()

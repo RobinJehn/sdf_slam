@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(BUILD_MAIN "Build main executable" ON)
 option(BUILD_MAIN_EIGEN "Build main_eigen executable" OFF)
 option(BUILD_MAIN_CERES "Build main_ceres executable" OFF)
+option(BUILD_GENERATE_SCAN "Build generate_scans executable" OFF)
 option(BUILD_TESTS "Build the tests" OFF)
 
 # Add the directory with FindSuiteSparse.cmake to CMake's module path
