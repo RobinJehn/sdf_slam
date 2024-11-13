@@ -21,14 +21,12 @@ void eigenToCholmod(const Eigen::SparseMatrix<double> &eigenMatrix,
       eigenMatrix.rows(), eigenMatrix.cols(), eigenMatrix.nonZeros(), true,
       true, -1, CHOLMOD_REAL, &c);
   if (!cholmodMatrix) {
-    std::cerr << "Error: Failed to allocate cholmod sparse matrix."
-              << std::endl;
-    return;
+    throw std::runtime_error("Failed to allocate CHOLMOD sparse matrix.");
   }
 
-  double *x = static_cast<double *>(cholmodMatrix->x);
-  int *i = static_cast<int *>(cholmodMatrix->i);
-  int *p = static_cast<int *>(cholmodMatrix->p);
+  auto *x = static_cast<double *>(cholmodMatrix->x);
+  auto *i = static_cast<int *>(cholmodMatrix->i);
+  auto *p = static_cast<int *>(cholmodMatrix->p);
 
   int k = 0;
   for (int col = 0; col < eigenMatrix.outerSize(); ++col) {
@@ -42,15 +40,6 @@ void eigenToCholmod(const Eigen::SparseMatrix<double> &eigenMatrix,
   p[eigenMatrix.cols()] = k;
 }
 
-// Setup initial scan positions and angles
-void setupScanPositions(double &theta1, double &theta2, Eigen::Vector2d &pos1,
-                        Eigen::Vector2d &pos2) {
-  theta1 = 9 * M_PI / 16;
-  pos1 = {3.5, -5};
-  theta2 = 8 * M_PI / 16;
-  pos2 = {4, -5};
-}
-
 // Runs the optimization process
 void runOptimization(
     ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, cholmod_common &c,
@@ -58,6 +47,7 @@ void runOptimization(
     const MapArgs<2> &map_args, const bool visualize,
     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
     const OptimizationArgs &opt_args) {
+
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
   double lambda = opt_args.initial_lambda;
@@ -70,8 +60,7 @@ void runOptimization(
     // Compute the Jacobian matrix
     functor.sparse_df(params, jacobian_sparse);
     if (jacobian_sparse.nonZeros() == 0) {
-      std::cerr << "Error: Jacobian has no non-zero entries." << std::endl;
-      return;
+      throw std::runtime_error("Jacobian has no non-zero entries.");
     }
 
     // RHS of the linear system
@@ -97,21 +86,18 @@ void runOptimization(
     // Solve the linear system
     cholmod_dense *cholmod_result =
         cholmod_solve(CHOLMOD_A, lhs_factorised, rhs, &c);
-
     if (!cholmod_result) {
-      std::cerr << "Error: cholmod_solve failed." << std::endl;
       cholmod_free_dense(&rhs, &c);
       cholmod_free_sparse(&lhs, &c);
-      return;
+      throw std::runtime_error("cholmod_solve failed.");
     }
 
-    // Update the parameters
     Eigen::VectorXd delta(jt_residuals.size());
     std::memcpy(delta.data(), cholmod_result->x,
                 jt_residuals.size() * sizeof(double));
     params += delta;
 
-    // Update lambda
+    // Update lambda based on error improvement
     functor(params, residuals);
     double new_error = residuals.squaredNorm();
     lambda = new_error < error ? lambda / opt_args.lambda_factor
@@ -121,7 +107,7 @@ void runOptimization(
     // Logging
     const double update_norm = delta.norm();
     std::cout << "Iteration: " << iter << " Error: " << error
-              << " Update Norm:" << update_norm << std::endl;
+              << " Update Norm: " << delta.norm() << std::endl;
     if (visualize) {
       visualizeMap(params, scans, map_args, initial_frame);
     }
@@ -138,60 +124,66 @@ void runOptimization(
 }
 
 int main() {
-  double theta1, theta2;
-  Eigen::Vector2d pos1, pos2;
-  setupScanPositions(theta1, theta2, pos1, pos2);
+  try {
+    const double theta1 = 9 * M_PI / 16;
+    const Eigen::Vector2d pos1 = {3.5, -5};
+    const double theta2 = 8 * M_PI / 16;
+    const Eigen::Vector2d pos2 = {4, -5};
 
-  auto scans = create_scans(pos1, theta1, pos2, theta2);
-  std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scans.first,
-                                                             *scans.second};
-  const bool visualize = false;
-  const bool from_ground_truth = true;
+    auto scans = create_scans(pos1, theta1, pos2, theta2);
+    std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = {*scans.first,
+                                                               *scans.second};
+    const bool visualize = false;
+    const bool from_ground_truth = true;
 
-  ObjectiveArgs objective_args;
-  objective_args.scanline_points = 10;
-  objective_args.step_size = 0.1;
-  objective_args.both_directions = true;
-  objective_args.scan_line_factor = 1;
-  objective_args.scan_point_factor = 1;
+    ObjectiveArgs objective_args;
+    objective_args.scanline_points = 10;
+    objective_args.step_size = 0.1;
+    objective_args.both_directions = true;
+    objective_args.scan_line_factor = 1;
+    objective_args.scan_point_factor = 1;
 
-  const int num_points = point_clouds[0].size() + point_clouds[1].size();
-  const int num_residuals = num_points * (objective_args.scanline_points + 1);
+    const int num_points = point_clouds[0].size() + point_clouds[1].size();
+    const int num_residuals = num_points * (objective_args.scanline_points + 1);
 
-  MapArgs<2> map_args;
-  map_args.num_points = {200, 200};
-  map_args.min_coords = Eigen::Vector2d(-3, -8);
-  map_args.max_coords = Eigen::Vector2d(2 * M_PI + 3, 4);
+    MapArgs<2> map_args;
+    map_args.num_points = {200, 200};
+    map_args.min_coords = Eigen::Vector2d(-3, -8);
+    map_args.max_coords = Eigen::Vector2d(2 * M_PI + 3, 4);
 
-  OptimizationArgs optimization_args;
-  optimization_args.max_iters = 100;
-  optimization_args.initial_lambda = 1;
-  optimization_args.tolerance = 1e-3;
-  optimization_args.lambda_factor = 1;
+    OptimizationArgs optimization_args;
+    optimization_args.max_iters = 100;
+    optimization_args.initial_lambda = 1;
+    optimization_args.tolerance = 1e-3;
+    optimization_args.lambda_factor = 1;
 
-  // Initialize the map and set up the optimization parameters
-  Map<2> map = init_map(map_args, from_ground_truth);
+    // Initialize the map and set up the optimization parameters
+    Map<2> map = init_map(map_args, from_ground_truth);
 
-  Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
-      Eigen::Translation<double, 2>(pos1) * Eigen::Rotation2D<double>(theta1);
-  Eigen::Transform<double, 2, Eigen::Affine> initial_frame_2 =
-      Eigen::Translation<double, 2>(pos2) * Eigen::Rotation2D<double>(theta2);
+    Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
+        Eigen::Translation<double, 2>(pos1) * Eigen::Rotation2D<double>(theta1);
+    Eigen::Transform<double, 2, Eigen::Affine> initial_frame_2 =
+        Eigen::Translation<double, 2>(pos2) * Eigen::Rotation2D<double>(theta2);
 
-  const std::vector<Eigen::Transform<double, 2, Eigen::Affine>>
-      transformations = {initial_frame, initial_frame_2};
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>>
+        transformations = {initial_frame, initial_frame_2};
 
-  Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
-  ObjectiveFunctor<2> functor(params.size(), num_residuals, map_args,
-                              point_clouds, objective_args, initial_frame);
+    Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
+    ObjectiveFunctor<2> functor(params.size(), num_residuals, map_args,
+                                point_clouds, objective_args, initial_frame);
 
-  cholmod_common c;
-  cholmod_start(&c);
-  runOptimization(functor, params, c, point_clouds, map_args, visualize,
-                  initial_frame, optimization_args);
-  cholmod_finish(&c);
+    cholmod_common c;
+    cholmod_start(&c);
+    runOptimization(functor, params, c, point_clouds, map_args, visualize,
+                    initial_frame, optimization_args);
+    cholmod_finish(&c);
 
-  // Visualize the optimized map and transformed point clouds
-  visualizeMap(params, point_clouds, map_args, initial_frame);
+    // Visualize the optimized map and transformed point clouds
+    visualizeMap(params, point_clouds, map_args, initial_frame);
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 
-  return 0;
+  return EXIT_SUCCESS;
 }
