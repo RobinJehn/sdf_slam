@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 project(sdf_slam VERSION 1.0 LANGUAGES CXX)
 
 # Specify the C++ standard globally
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Option to build tests
 option(BUILD_TESTS "Build the tests" ON)
@@ -57,10 +57,9 @@ set(VISUALIZE_HEADERS
 )
 
 # ================================================
-# Find and include external libraries
+# Find external libraries
 # ================================================
 
-# Find and include PCL
 find_package(PCL 1.8 REQUIRED COMPONENTS common io visualization)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED)
@@ -68,6 +67,15 @@ find_package(Ceres REQUIRED)
 find_package(glog REQUIRED)
 find_package(SuiteSparse REQUIRED)
 find_package(JsonCpp REQUIRED)
+
+include(FetchContent)
+
+FetchContent_Declare(
+  yaml-cpp
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  GIT_TAG 0.8.0
+)
+FetchContent_MakeAvailable(yaml-cpp)
 
 # ================================================
 # Target: sdf_slam_eigen
@@ -157,6 +165,14 @@ set(OPTIMIZATION_HEADERS_LM
     ${OPTIMIZATION_PATH}/objective.hpp
 )
 
+set(CONFIG_PATH src/config)
+set(CONFIG_SOURCES
+    ${CONFIG_PATH}/utils.cpp
+)
+set(CONFIG_HEADERS
+    ${CONFIG_PATH}/utils.hpp
+)
+
 # Create executable for sdf_slam
 add_executable(${PROJECT_NAME}
     src/main.cpp
@@ -166,6 +182,7 @@ add_executable(${PROJECT_NAME}
     ${OPTIMIZATION_SOURCES_COMMON}
     ${OPTIMIZATION_SOURCES_LM}
     ${VISUALIZE_SOURCES}
+    ${CONFIG_SOURCES}
 )
 
 # Link libraries and include directories for sdf_slam
@@ -175,6 +192,7 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     SuiteSparse::CHOLMOD # Add SuiteSparse CHOLMOD
     SuiteSparse::SPQR # Add SPQR for SuiteSparseQR functionality
+    yaml-cpp::yaml-cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

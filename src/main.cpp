@@ -1,3 +1,4 @@
+#include "config/utils.hpp"
 #include "map/map.hpp"
 #include "map/utils.hpp"
 #include "optimization/objective.hpp"
@@ -136,29 +137,14 @@ int main() {
     const bool visualize = false;
     const bool from_ground_truth = true;
 
-    ObjectiveArgs objective_args;
-    objective_args.scanline_points = 10;
-    objective_args.step_size = 0.1;
-    objective_args.both_directions = true;
-    objective_args.scan_line_factor = 1;
-    objective_args.scan_point_factor = 1;
+    Args<2> args = setup_from_yaml<2>("../config/sdf.yml");
 
     const int num_points = point_clouds[0].size() + point_clouds[1].size();
-    const int num_residuals = num_points * (objective_args.scanline_points + 1);
-
-    MapArgs<2> map_args;
-    map_args.num_points = {200, 200};
-    map_args.min_coords = Eigen::Vector2d(-3, -8);
-    map_args.max_coords = Eigen::Vector2d(2 * M_PI + 3, 4);
-
-    OptimizationArgs optimization_args;
-    optimization_args.max_iters = 100;
-    optimization_args.initial_lambda = 1;
-    optimization_args.tolerance = 1e-3;
-    optimization_args.lambda_factor = 1;
+    const int num_residuals =
+        num_points * (args.objective_args.scanline_points + 1);
 
     // Initialize the map and set up the optimization parameters
-    Map<2> map = init_map(map_args, from_ground_truth);
+    Map<2> map = init_map(args.map_args, from_ground_truth);
 
     Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
         Eigen::Translation<double, 2>(pos1) * Eigen::Rotation2D<double>(theta1);
@@ -169,17 +155,18 @@ int main() {
         transformations = {initial_frame, initial_frame_2};
 
     Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
-    ObjectiveFunctor<2> functor(params.size(), num_residuals, map_args,
-                                point_clouds, objective_args, initial_frame);
+    ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args,
+                                point_clouds, args.objective_args,
+                                initial_frame);
 
     cholmod_common c;
     cholmod_start(&c);
-    runOptimization(functor, params, c, point_clouds, map_args, visualize,
-                    initial_frame, optimization_args);
+    runOptimization(functor, params, c, point_clouds, args.map_args, visualize,
+                    initial_frame, args.optimization_args);
     cholmod_finish(&c);
 
     // Visualize the optimized map and transformed point clouds
-    visualizeMap(params, point_clouds, map_args, initial_frame);
+    visualizeMap(params, point_clouds, args.map_args, initial_frame);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
