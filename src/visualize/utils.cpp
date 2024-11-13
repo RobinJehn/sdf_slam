@@ -95,7 +95,7 @@ void overlayPoints(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
   for (const auto &point : points) {
     const Eigen::Vector2d map_point = (point - min_coords).cwiseProduct(scale);
     const int x = static_cast<int>(map_point.x());
-    const int y = static_cast<int>(map_point.y());
+    const int y = image.rows - static_cast<int>(map_point.y());
     if (x >= 0 && x < image.cols && y >= 0 && y < image.rows) {
       cv::circle(image, cv::Point(x, y), 1, cv::Scalar(0, 0, 255), -1);
     }
@@ -159,7 +159,7 @@ void visualizeMap(
   Eigen::MatrixXd map(map_args.num_points[0], map_args.num_points[1]);
   int index = 0;
   for (int x = 0; x < map_args.num_points[0]; ++x) {
-    for (int y = 0; y < map_args.num_points[1]; ++y) {
+    for (int y = map_args.num_points[1] - 1; y >= 0; --y) {
       map(y, x) = std::max(-3.0, std::min(3.0, params(index++)));
     }
   }
