@@ -1,0 +1,17 @@
+objective_args:
+  scanline_points: 20
+  step_size: 0.1
+  both_directions: true
+  scan_line_factor: 1
+  scan_point_factor: 1
+
+map_args:
+  num_points: [100, 100]
+  min_coords: [-3, -7]
+  max_coords: [9.28319, 4] # 2 * M_PI + 3
+
+optimization_args:
+  max_iters: 20
+  initial_lambda: 1
+  tolerance: 1e-3
+  lambda_factor: 3
