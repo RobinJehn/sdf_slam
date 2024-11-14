@@ -1,0 +1,6 @@
+output_directory: multi_scan
+number_of_scans: 5
+initial_theta: 1.75708
+initial_position: [1, -5]
+delta_theta: 0
+delta_position: [1, 0]
