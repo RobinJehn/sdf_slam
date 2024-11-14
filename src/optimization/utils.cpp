@@ -413,6 +413,24 @@ generate_points_and_desired_values(
 }
 
 template <int Dim>
+Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> compute_dResidual_dTransform(
+    const std::array<Map<Dim>, Dim> &map_derivatives,
+    const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
+    const bool numerical) {
+
+  Eigen::Matrix<double, 1, Dim> dResidual_dPoint;
+  for (int d = 0; d < Dim; ++d) {
+    dResidual_dPoint[d] = map_derivatives[d].value(point);
+  }
+
+  const auto dPoint_dTransform =
+      compute_transformation_derivative<Dim>(point, transform, numerical);
+
+  return dResidual_dPoint * dPoint_dTransform;
+}
+
+template <int Dim>
 Eigen::VectorXd compute_residuals(
     const State<Dim> &state,
     const std::vector<pcl::PointCloud<
@@ -436,6 +454,40 @@ Eigen::VectorXd compute_residuals(
                         : objective_args.scan_line_factor;
     residuals(i) = factor * (interpolated_value - desired_value);
   }
+
+  // // Regularization term
+  // double roughness = 0;
+  // const std::array<Map<Dim>, Dim> derivatives = state.map_.df();
+  // for (int i = 0; i < derivatives[0].get_num_points(0); i++) {
+  //   for (int j = 0; j < derivatives[0].get_num_points(1); j++) {
+  //     if constexpr (Dim == 2) {
+  //       const typename Map<Dim>::index_t index = {i, j};
+  //       const double dx = derivatives[0].get_value_at(index);
+  //       const double dy = derivatives[1].get_value_at(index);
+
+  //       const double norm = std::sqrt(dx * dx + dy * dy);
+  //       const double norm_diff = std::abs(1 - norm);
+  //       roughness += norm_diff;
+  //     } else {
+  //       for (int k = 0; k < derivatives[0].get_num_points(2); k++) {
+  //         const typename Map<Dim>::index_t index = {i, j, k};
+  //         const double dx = derivatives[0].get_value_at(index);
+  //         const double dy = derivatives[1].get_value_at(index);
+  //         const double dz = derivatives[2].get_value_at(index);
+
+  //         const double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
+  //         const double norm_diff = std::abs(1 - norm);
+  //         roughness += norm_diff;
+  //       }
+  //     }
+  //   }
+  // }
+
+  // const double average_roughness = roughness /
+  // derivatives[0].get_num_points();
+
+  // residuals(point_value.size()) =
+  //     objective_args.smoothness_factor * average_roughness;
 
   return residuals;
 }
@@ -733,3 +785,15 @@ template Eigen::VectorXd compute_residuals<3>(
     const State<3> &state,
     const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
     const ObjectiveArgs &objective_args);
+
+template Eigen::Matrix<double, 1, 3> compute_dResidual_dTransform<2>(
+    const std::array<Map<2>, 2> &map_derivatives,
+    const Eigen::Matrix<double, 2, 1> &point,
+    const Eigen::Transform<double, 2, Eigen::Affine> &transform,
+    const bool numerical);
+
+template Eigen::Matrix<double, 1, 6> compute_dResidual_dTransform<3>(
+    const std::array<Map<3>, 3> &map_derivatives,
+    const Eigen::Matrix<double, 3, 1> &point,
+    const Eigen::Transform<double, 3, Eigen::Affine> &transform,
+    const bool numerical);

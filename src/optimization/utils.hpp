@@ -17,6 +17,10 @@ struct ObjectiveArgs {
   // Scan points
   double scan_point_factor = 1; // Factor by which to multiply the scan point
                                 // residuals
+
+  // Map smoothness
+  double smoothness_factor = 1; // Factor by which to multiply the smoothness
+                                // term in the objective function
 };
 
 struct OptimizationArgs {
@@ -26,7 +30,7 @@ struct OptimizationArgs {
                              // each iteration
   double tolerance = 1e-3;   // Tolerance for stopping criteria
   bool visualize = false;    // Whether to visualize the map on each iteration
-  bool std_out = true;            // Whether to print to stdout
+  bool std_out = true;       // Whether to print to stdout
 };
 
 /**
@@ -267,6 +271,22 @@ compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
 template <int Dim>
 Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
 compute_transformation_derivative(
+    const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
+    const bool numerical = false);
+
+/**
+ * @brief Computes how the residual changes with respect to the transformation.
+ *
+ * @param map_derivatives The derivatives of the map.
+ * @param point The point at which to compute the derivative.
+ * @param transform The transformation to compute the derivative for.
+ * @param numerical Whether to compute the point transform derivative
+ * numerically.
+ */
+template <int Dim>
+Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> compute_dResidual_dTransform(
+    const std::array<Map<Dim>, Dim> &map_derivatives,
     const Eigen::Matrix<double, Dim, 1> &point,
     const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
     const bool numerical = false);
