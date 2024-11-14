@@ -9,6 +9,7 @@ set(SRC_FILES
     targets/main/main.cpp
     ${MAP_SOURCES}
     ${SCAN_SOURCES}
+    scan/utils.cpp
     ${STATE_SOURCES}
     ${OPTIMIZATION_SOURCES_COMMON}
     optimization/optimizer.cpp

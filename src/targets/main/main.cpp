@@ -5,6 +5,7 @@
 #include "optimization/optimizer.hpp"
 #include "optimization/utils.hpp"
 #include "scan/generate.hpp"
+#include "scan/utils.hpp"
 #include "state/state.hpp"
 #include "visualize/utils.hpp"
 #include <Eigen/Dense>
@@ -126,17 +127,10 @@ void runOptimization(
 
 int main() {
   try {
-    const double theta1 = 9 * M_PI / 16;
-    const Eigen::Vector2d pos1 = {3.5, -5};
-    const double theta2 = 8 * M_PI / 16;
-    const Eigen::Vector2d pos2 = {4, -5};
+    Scans scans = read_scans("../data/scans");
+    const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = scans.scans;
 
-    const std::vector<Eigen::Vector2d> scanner_positions = {pos1, pos2};
-    const std::vector<double> thetas = {theta1, theta2};
-    const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds =
-        create_scans(scanner_positions, thetas);
-
-    const bool visualize = false;
+    const bool visualize = true;
     const bool from_ground_truth = true;
 
     Args<2> args = setup_from_yaml<2>("../config/sdf.yml");
@@ -148,27 +142,19 @@ int main() {
     // Initialize the map and set up the optimization parameters
     Map<2> map = init_map(args.map_args, from_ground_truth);
 
-    Eigen::Transform<double, 2, Eigen::Affine> initial_frame =
-        Eigen::Translation<double, 2>(pos1) * Eigen::Rotation2D<double>(theta1);
-    Eigen::Transform<double, 2, Eigen::Affine> initial_frame_2 =
-        Eigen::Translation<double, 2>(pos2) * Eigen::Rotation2D<double>(theta2);
-
-    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>>
-        transformations = {initial_frame, initial_frame_2};
-
-    Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
+    Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
     ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args,
                                 point_clouds, args.objective_args,
-                                initial_frame);
+                                scans.frames[0]);
 
     cholmod_common c;
     cholmod_start(&c);
     runOptimization(functor, params, c, point_clouds, args.map_args, visualize,
-                    initial_frame, args.optimization_args);
+                    scans.frames[0], args.optimization_args);
     cholmod_finish(&c);
 
     // Visualize the optimized map and transformed point clouds
-    visualizeMap(params, point_clouds, args.map_args, initial_frame);
+    visualizeMap(params, point_clouds, args.map_args, scans.frames[0]);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
