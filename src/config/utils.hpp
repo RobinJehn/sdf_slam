@@ -18,3 +18,14 @@ template <int Dim> struct Args {
 
 template <int Dim>
 Args<Dim> setup_from_yaml(const std::filesystem::path &config_path);
+
+struct GenerateScanArgs {
+  std::filesystem::path output_directory;
+  int number_of_scans;
+  double initial_theta;
+  Eigen::Vector2d initial_position;
+  double delta_theta;
+  Eigen::Vector2d delta_position;
+};
+
+GenerateScanArgs setup_generate_scan_args(const std::filesystem::path &config_path);

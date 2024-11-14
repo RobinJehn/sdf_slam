@@ -97,5 +97,26 @@ template <int Dim> Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   return args;
 }
 
+GenerateScanArgs
+setup_generate_scan_args(const std::filesystem::path &config_path) {
+  // Load the YAML file
+  YAML::Node config = YAML::LoadFile(config_path.string());
+
+  GenerateScanArgs args;
+  args.output_directory =
+      sfs::path(config["output_directory"].as<std::string>());
+  args.number_of_scans = config["number_of_scans"].as<int>();
+  args.initial_theta = config["initial_theta"].as<double>();
+  args.initial_position =
+      Eigen::Vector2d(config["initial_position"][0].as<double>(),
+                      config["initial_position"][1].as<double>());
+  args.delta_theta = config["delta_theta"].as<double>();
+  args.delta_position =
+      Eigen::Vector2d(config["delta_position"][0].as<double>(),
+                      config["delta_position"][1].as<double>());
+
+  return args;
+}
+
 template Args<2> setup_from_yaml<2>(const sfs::path &config_path);
 template Args<3> setup_from_yaml<3>(const sfs::path &config_path);

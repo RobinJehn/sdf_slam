@@ -1,3 +1,4 @@
+#include "config/utils.hpp"
 #include "scan/generate.hpp"
 #include <filesystem>
 #include <iostream>
@@ -7,24 +8,26 @@
 namespace sfs = std::filesystem;
 
 int main(int argc, char **argv) {
-  // Define scanner positions and orientations
-  const double theta_scanner_1 = 9 * M_PI / 16;
-  const Eigen::Vector2d scanner_position_1 = {3.5, -5};
+  GenerateScanArgs args =
+      setup_generate_scan_args(sfs::path("../config/generate_scans.yml"));
 
-  const double theta_scanner_2 = 8 * M_PI / 16;
-  const Eigen::Vector2d scanner_position_2 = {4, -5};
+  std::vector<Eigen::Vector2d> scanner_positions;
+  std::vector<double> thetas;
+  for (int i = 0; i < args.number_of_scans; ++i) {
+    scanner_positions.push_back(args.initial_position +
+                                i * args.delta_position);
+    thetas.push_back(args.initial_theta + i * args.delta_theta);
+  }
 
-  const std::vector<Eigen::Vector2d> scanner_positions = {scanner_position_1,
-                                                          scanner_position_2};
-  const std::vector<double> thetas = {theta_scanner_1, theta_scanner_2};
   // Generate scans
   const auto scans = create_scans(scanner_positions, thetas);
-
-  // Save Info to disk
-  const sfs::path base_dir = "../data/scans";
+  const sfs::path base_dir = sfs::path("../data/") / args.output_directory;
+  if (sfs::exists(base_dir)) {
+    sfs::remove_all(base_dir);
+  }
+  sfs::create_directories(base_dir);
   const sfs::path info_file = base_dir / "scanner_info.txt";
   std::ofstream outFile(info_file.string(), std::ios::app);
-  sfs::create_directories(base_dir);
   for (size_t i = 0; i < scans.size(); ++i) {
     const sfs::path scan_file =
         base_dir / ("scan" + std::to_string(i) + ".pcd");

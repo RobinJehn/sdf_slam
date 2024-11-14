@@ -9,6 +9,7 @@ set(SRC_FILES
     targets/generate_scan/main.cpp
     ${MAP_SOURCES}
     ${SCAN_SOURCES}
+    ${CONFIG_SOURCES}
 )
 
 # Prepend SRC_DIR to all source files

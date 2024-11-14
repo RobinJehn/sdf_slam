@@ -142,6 +142,7 @@ int main() {
     Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth);
 
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
+    visualizeMap(params, point_clouds, args.map_args, scans.frames[0]);
     ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args,
                                 point_clouds, args.objective_args,
                                 scans.frames[0]);
