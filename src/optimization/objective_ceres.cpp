@@ -20,11 +20,11 @@ ObjectiveFunctorCeres<Dim>::ObjectiveFunctorCeres(
 
 // Compute residuals
 template <int Dim>
-bool ObjectiveFunctorCeres<Dim>::compute_residuals(
+bool ObjectiveFunctorCeres<Dim>::compute_residuals_(
     const Eigen::VectorXd &x, Eigen::VectorXd &residuals) const {
   // Unflatten the state and compute the residuals
   State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
-  residuals = objective_vec<Dim>(state, point_clouds_, objective_args_);
+  residuals = compute_residuals<Dim>(state, point_clouds_, objective_args_);
   return true;
 }
 
@@ -109,7 +109,7 @@ bool ManualCostFunction::Evaluate(double const *const *parameters,
 
   // Compute residuals
   Eigen::VectorXd res;
-  functor_->compute_residuals(params, res);
+  functor_->compute_residuals_(params, res);
   for (int i = 0; i < res.size(); ++i) {
     residuals[i] = res[i];
   }

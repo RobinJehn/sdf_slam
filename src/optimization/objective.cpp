@@ -19,7 +19,7 @@ int ObjectiveFunctor<Dim>::operator()(const Eigen::VectorXd &x,
                                       Eigen::VectorXd &fvec) const {
   State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
 
-  fvec = objective_vec<Dim>(state, point_clouds_, objective_args_);
+  fvec = compute_residuals<Dim>(state, point_clouds_, objective_args_);
 
   return 0;
 }

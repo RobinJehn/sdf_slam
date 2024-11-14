@@ -19,7 +19,7 @@ template <int Dim> struct ObjectiveFunctorCeres {
       const int num_outputs,
       const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
-  bool compute_residuals(const Eigen::VectorXd &x,
+  bool compute_residuals_(const Eigen::VectorXd &x,
                          Eigen::VectorXd &residuals) const;
 
   void df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;

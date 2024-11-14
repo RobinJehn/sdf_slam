@@ -317,15 +317,6 @@ get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
 }
 
 template <int Dim>
-Eigen::VectorXd
-objective_vec(const State<Dim> &state,
-              const std::vector<pcl::PointCloud<typename std::conditional<
-                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
-              const ObjectiveArgs &objective_args) {
-  return compute_residuals(state, point_clouds, objective_args);
-}
-
-template <int Dim>
 std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
 generate_points_and_desired_values(
     const State<Dim> &state,
@@ -699,15 +690,6 @@ template std::pair<std::array<typename Map<3>::index_t, (1 << 3)>,
 get_interpolation_values<3>(const Eigen::Matrix<double, 3, 1> &p,
                             const Map<3> &map);
 
-template Eigen::VectorXd
-objective_vec<2>(const State<2> &state,
-                 const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
-                 const ObjectiveArgs &objective_args);
-template Eigen::VectorXd objective_vec<3>(
-    const State<3> &state,
-    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
-    const ObjectiveArgs &objective_args);
-
 template Eigen::Matrix<double, 2, 1>
 compute_analytical_derivative<2>(const Map<2> &map,
                                  const Eigen::Matrix<double, 2, 1> &point);
@@ -741,3 +723,13 @@ compute_derivative_map_value_wrt_transformation_numerical<3>(
     const State<3> &state, const Eigen::Matrix<double, 3, 1> &point,
     const Eigen::Transform<double, 3, Eigen::Affine> &transform,
     const double epsilon);
+
+template Eigen::VectorXd compute_residuals<2>(
+    const State<2> &state,
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
+    const ObjectiveArgs &objective_args);
+
+template Eigen::VectorXd compute_residuals<3>(
+    const State<3> &state,
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
+    const ObjectiveArgs &objective_args);

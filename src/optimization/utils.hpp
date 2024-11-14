@@ -227,13 +227,6 @@ Eigen::VectorXd compute_residuals(
         &point_clouds,
     const ObjectiveArgs &objective_args);
 
-template <int Dim>
-Eigen::VectorXd
-objective_vec(const State<Dim> &state,
-              const std::vector<pcl::PointCloud<typename std::conditional<
-                  Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &point_clouds,
-              const ObjectiveArgs &objective_args);
-
 /**
  * @brief Compute the analytical derivative of a map at a given point with
  * respect to the point.
