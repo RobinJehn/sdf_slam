@@ -58,6 +58,41 @@ template <int Dim> Args<Dim> setup_from_yaml(const sfs::path &config_path) {
       config["optimization_args"]["tolerance"].as<double>();
   args.optimization_args.lambda_factor =
       config["optimization_args"]["lambda_factor"].as<double>();
+  args.optimization_args.visualize =
+      config["optimization_args"]["visualize"].as<bool>();
+  args.optimization_args.std_out =
+      config["optimization_args"]["std_out"].as<bool>();
+
+  // Read general_args from YAML
+  args.general_args.from_ground_truth =
+      config["general_args"]["from_ground_truth"].as<bool>();
+  args.general_args.data_path =
+      sfs::path(config["general_args"]["data_path"].as<std::string>());
+
+  if (args.objective_args.both_directions &&
+      args.objective_args.scanline_points % 2 != 0) {
+    throw std::runtime_error(
+        "scanline_points must be even when both_directions is true.");
+  }
+
+  if (args.objective_args.scanline_points < 0) {
+    throw std::runtime_error(
+        "scanline_points must be greater than or equal to 0.");
+  }
+
+  if (args.objective_args.step_size <= 0) {
+    throw std::runtime_error("step_size must be greater than 0.");
+  }
+
+  if (args.objective_args.scan_line_factor < 0) {
+    throw std::runtime_error(
+        "scan_line_factor must be greater than or equal to 0.");
+  }
+
+  if (args.objective_args.scan_point_factor < 0) {
+    throw std::runtime_error(
+        "scan_point_factor must be greater than or equal to 0.");
+  }
 
   return args;
 }

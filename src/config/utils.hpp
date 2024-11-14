@@ -3,10 +3,17 @@
 #include "optimization/utils.hpp"
 #include <filesystem>
 
+struct GeneralArgs {
+  std::filesystem::path data_path; // Path to the data directory with the scans
+  bool from_ground_truth = false;  // Whether to initialize the map from ground
+                                   // truth
+};
+
 template <int Dim> struct Args {
   MapArgs<Dim> map_args;
   ObjectiveArgs objective_args;
   OptimizationArgs optimization_args;
+  GeneralArgs general_args;
 };
 
 template <int Dim>

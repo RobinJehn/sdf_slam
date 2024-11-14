@@ -46,7 +46,7 @@ void eigenToCholmod(const Eigen::SparseMatrix<double> &eigenMatrix,
 void runOptimization(
     ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, cholmod_common &c,
     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-    const MapArgs<2> &map_args, const bool visualize,
+    const MapArgs<2> &map_args,
     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
     const OptimizationArgs &opt_args) {
 
@@ -108,9 +108,11 @@ void runOptimization(
 
     // Logging
     const double update_norm = delta.norm();
-    std::cout << "Iteration: " << iter << " Error: " << error
-              << " Update Norm: " << delta.norm() << std::endl;
-    if (visualize) {
+    if (opt_args.std_out) {
+      std::cout << "Iteration: " << iter << " Error: " << error
+                << " Update Norm: " << update_norm << std::endl;
+    }
+    if (opt_args.visualize) {
       visualizeMap(params, scans, map_args, initial_frame);
     }
 
@@ -127,20 +129,17 @@ void runOptimization(
 
 int main() {
   try {
-    Scans scans = read_scans("../data/scans");
-    const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = scans.scans;
-
-    const bool visualize = true;
-    const bool from_ground_truth = true;
-
     Args<2> args = setup_from_yaml<2>("../config/sdf.yml");
+
+    Scans scans = read_scans(args.general_args.data_path);
+    const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = scans.scans;
 
     const int num_points = point_clouds[0].size() * point_clouds.size();
     const int num_residuals =
         num_points * (args.objective_args.scanline_points + 1);
 
     // Initialize the map and set up the optimization parameters
-    Map<2> map = init_map(args.map_args, from_ground_truth);
+    Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth);
 
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
     ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args,
@@ -149,7 +148,7 @@ int main() {
 
     cholmod_common c;
     cholmod_start(&c);
-    runOptimization(functor, params, c, point_clouds, args.map_args, visualize,
+    runOptimization(functor, params, c, point_clouds, args.map_args,
                     scans.frames[0], args.optimization_args);
     cholmod_finish(&c);
 

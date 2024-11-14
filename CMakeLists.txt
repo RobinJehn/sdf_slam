@@ -14,6 +14,9 @@ option(BUILD_MAIN_CERES "Build main_ceres executable" OFF)
 option(BUILD_GENERATE_SCAN "Build generate_scans executable" OFF)
 option(BUILD_TESTS "Build the tests" OFF)
 
+# Set the output directory for executables
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 # Add the directory with FindSuiteSparse.cmake to CMake's module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 

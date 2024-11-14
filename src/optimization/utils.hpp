@@ -25,6 +25,8 @@ struct OptimizationArgs {
   double lambda_factor = 1;  // Factor by which lambda is multiplied or divided
                              // each iteration
   double tolerance = 1e-3;   // Tolerance for stopping criteria
+  bool visualize = false;    // Whether to visualize the map on each iteration
+  bool std_out = true;            // Whether to print to stdout
 };
 
 /**

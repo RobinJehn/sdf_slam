@@ -15,3 +15,9 @@ optimization_args:
   initial_lambda: 1
   tolerance: 1e-3
   lambda_factor: 3
+  visualize: false
+  std_out: true
+
+general_args:
+  from_ground_truth: true
+  data_path: ../data/scans # relative to build directory
