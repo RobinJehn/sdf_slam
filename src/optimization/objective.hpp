@@ -166,4 +166,54 @@ private:
           &interpolation_point_indices,
       const Eigen::VectorXd &interpolation_weights,
       const int transformation_index, const double residual_factor) const;
+
+  std::vector<Eigen::Triplet<double>>
+  compute_jacobian_triplets(const Eigen::VectorXd &x) const;
+
+  void fill_jacobian_triplets(
+      std::vector<Eigen::Triplet<double>> &tripletList,
+      const int total_map_points, int i,
+      const Eigen::Matrix<double, 1, n_transformation_params_>
+          &dDF_dTransformation,
+      const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+          &interpolation_indices,
+      const Eigen::VectorXd &interpolation_weights,
+      const int transformation_index, const double residual_factor) const;
+
+  /**
+   * @brief Compute the partial derivatives of the residual with respect to the
+   * map.
+   *
+   * @param tripletList The list of triplets to store the computed partial
+   * derivatives.
+   * @param residual_index The index of the residual being computed.
+   * @param residual_factor The factor used to weight the residual.
+   * @param interpolation_indices An array of indices for the interpolation
+   * points.
+   * @param interpolation_weights The weights for the interpolation.
+   *
+   */
+  void fill_dMap(std::vector<Eigen::Triplet<double>> &tripletList,
+                 const uint residual_index, const double residual_factor,
+                 const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+                     &interpolation_indices,
+                 const Eigen::VectorXd &interpolation_weights) const;
+
+  /**
+   * @brief Compute the partial derivatives of the residual with respect to the
+   * transformation.
+   *
+   * @param tripletList The list of triplets to store the computed partial
+   * derivatives.
+   * @param residual_index The index of the residual being computed.
+   * @param residual_factor The factor used to weight the residual.
+   * @param offset Where to start storing the computed partial derivatives.
+   * @param dTransform The derivative of the residual with respect to the
+   * transformation.
+   */
+  void fill_dTransform(std::vector<Eigen::Triplet<double>> &tripletList,
+                       const uint residual_index, const double residual_factor,
+                       const uint offset,
+                       const Eigen::Matrix<double, 1, n_transformation_params_>
+                           &dTransform) const;
 };

@@ -114,48 +114,26 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
 template <int Dim>
 int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
                               Eigen::MatrixXd &jacobian) const {
-  const auto [state, derivatives] = compute_state_and_derivatives(x);
   jacobian.setZero(values(), inputs());
+  std::vector<Eigen::Triplet<double>> tripletList =
+      compute_jacobian_triplets(x);
 
-  const auto &point_value =
-      generate_points_and_desired_values(state, point_clouds_, objective_args_);
-  for (size_t i = 0; i < point_value.size(); ++i) {
-    const auto &[point, desired_value] = point_value[i];
-    if (!state.map_.in_bounds(point)) {
-      continue;
-    }
-    auto [interpolation_indices, interpolation_weights] =
-        get_interpolation_values(point, state.map_);
-
-    Eigen::Matrix<double, 1, Dim> dDF_dPoint;
-    for (int d = 0; d < Dim; ++d) {
-      dDF_dPoint[d] =
-          derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
-    }
-
-    double factor = i % (objective_args_.scanline_points + 1) == 0
-                        ? objective_args_.scan_point_factor
-                        : objective_args_.scan_line_factor;
-
-    const int transformation_index =
-        i / (point_value.size() / point_clouds_.size());
-    auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
-        point, state.transformations_[transformation_index]);
-    fill_jacobian_dense(jacobian, map_args_.num_points, i, dDF_dPoint,
-                        dPoint_dTransformation, interpolation_indices,
-                        interpolation_weights, transformation_index, factor);
+  for (const auto &triplet : tripletList) {
+    jacobian(triplet.row(), triplet.col()) += triplet.value();
   }
   return 0;
 }
 
 template <int Dim>
-int ObjectiveFunctor<Dim>::sparse_df(
-    const Eigen::VectorXd &x, Eigen::SparseMatrix<double> &jacobian) const {
-  const auto [state, derivatives] = compute_state_and_derivatives(x);
+std::vector<Eigen::Triplet<double>>
+ObjectiveFunctor<Dim>::compute_jacobian_triplets(
+    const Eigen::VectorXd &x) const {
   std::vector<Eigen::Triplet<double>> tripletList;
-
+  const auto [state, derivatives] = compute_state_and_derivatives(x);
   const auto &point_value =
       generate_points_and_desired_values(state, point_clouds_, objective_args_);
+
+  // Point residuals
   for (size_t i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
     if (!state.map_.in_bounds(point)) {
@@ -170,19 +148,87 @@ int ObjectiveFunctor<Dim>::sparse_df(
           derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
     }
 
-    double factor = i % (objective_args_.scanline_points + 1) == 0
-                        ? objective_args_.scan_point_factor
-                        : objective_args_.scan_line_factor;
-
     const int transformation_index =
-        i / (point_value.size() / point_clouds_.size());
-    auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
+        static_cast<int>(i / (point_value.size() / point_clouds_.size()));
+    const auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
         point, state.transformations_[transformation_index]);
-    fill_jacobian_sparse(tripletList, map_args_.num_points, i, dDF_dPoint,
-                         dPoint_dTransformation, interpolation_indices,
-                         interpolation_weights, transformation_index, factor);
+
+    Eigen::Matrix<double, 1, n_transformation_params_> dDF_dTransformation =
+        dDF_dPoint * dPoint_dTransformation;
+
+    const double factor = (i % (objective_args_.scanline_points + 1) == 0)
+                              ? objective_args_.scan_point_factor
+                              : objective_args_.scan_line_factor;
+
+    // The triplet list to modify
+    // The locations at which to insert the map derivative
+    // The location at which to insert the transformation derivative
+
+    fill_jacobian_triplets(tripletList, state.map_.get_num_points(), i,
+                           dDF_dTransformation, interpolation_indices,
+                           interpolation_weights, transformation_index, factor);
+  }
+  return tripletList;
+}
+
+template <int Dim>
+void ObjectiveFunctor<Dim>::fill_dMap(
+    std::vector<Eigen::Triplet<double>> &tripletList, const uint residual_index,
+    const double residual_factor,
+    const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+        &interpolation_indices,
+    const Eigen::VectorXd &interpolation_weights) const {
+
+  for (size_t j = 0; j < interpolation_indices.size(); ++j) {
+    const auto &index = interpolation_indices[j];
+    const int flattened_index =
+        map_index_to_flattened_index<Dim>(map_args_.num_points, index);
+
+    const double dMap = residual_factor * interpolation_weights[j];
+    tripletList.emplace_back(residual_index, flattened_index, dMap);
+  }
+}
+
+template <int Dim>
+void ObjectiveFunctor<Dim>::fill_dTransform(
+    std::vector<Eigen::Triplet<double>> &tripletList, const uint residual_index,
+    const double residual_factor, const uint offset,
+    const Eigen::Matrix<double, 1, n_transformation_params_> &dTransform)
+    const {
+  for (int d = 0; d < n_transformation_params_; ++d) {
+    tripletList.emplace_back(residual_index, offset + d,
+                             residual_factor * dTransform(d));
+  }
+}
+
+template <int Dim>
+void ObjectiveFunctor<Dim>::fill_jacobian_triplets(
+    std::vector<Eigen::Triplet<double>> &tripletList,
+    const int total_map_points, int i,
+    const Eigen::Matrix<double, 1, n_transformation_params_>
+        &dDF_dTransformation,
+    const std::array<typename Map<Dim>::index_t, (1 << Dim)>
+        &interpolation_indices,
+    const Eigen::VectorXd &interpolation_weights,
+    const int transformation_index, const double residual_factor) const {
+  fill_dMap(tripletList, i, residual_factor, interpolation_indices,
+            interpolation_weights);
+
+  // Transformation 0 is fixed
+  if (transformation_index == 0) {
+    return;
   }
 
+  const u_int32_t offset =
+      total_map_points + (transformation_index - 1) * n_transformation_params_;
+  fill_dTransform(tripletList, i, residual_factor, offset, dDF_dTransformation);
+}
+
+template <int Dim>
+int ObjectiveFunctor<Dim>::sparse_df(
+    const Eigen::VectorXd &x, Eigen::SparseMatrix<double> &jacobian) const {
+  const std::vector<Eigen::Triplet<double>> tripletList =
+      compute_jacobian_triplets(x);
   jacobian.resize(values(), inputs());
   jacobian.setFromTriplets(tripletList.begin(), tripletList.end());
   return 0;
