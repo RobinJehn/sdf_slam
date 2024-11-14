@@ -80,6 +80,10 @@ private:
   /** The initial frame is fixed */
   const Eigen::Transform<double, Dim, Eigen::Affine> initial_frame_;
 
+  // Helper variables
+  static constexpr uint rotation_dim_ = (Dim == 3) ? 3 : 1;
+  static constexpr uint n_transformation_params_ = Dim + rotation_dim_;
+
   /** @brief Computes the state and its derivatives for a given dimension.
    *
    * This function template calculates the state and its derivatives based on
@@ -88,8 +92,7 @@ private:
    * Localization and Mapping) context.
    */
   std::pair<State<Dim>, std::array<Map<Dim>, Dim>>
-  compute_state_and_derivatives(const Eigen::VectorXd &x,
-                                const MapArgs<Dim> &map_args) const;
+  compute_state_and_derivatives(const Eigen::VectorXd &x) const;
 
   /**
    * @brief Fills the dense Jacobian matrix for the given transformation.
@@ -118,9 +121,8 @@ private:
   void fill_jacobian_dense(
       Eigen::MatrixXd &jacobian, const std::array<int, Dim> &num_map_points,
       int i, const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
-      const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+      const Eigen::Matrix<double, Dim, n_transformation_params_>
           &dPoint_dTransformation,
-      const std::vector<pcl::PointCloud<PointType>> &point_clouds,
       const std::array<typename Map<Dim>::index_t, (1 << Dim)>
           &interpolation_point_indices,
       const Eigen::VectorXd &interpolation_weights,
@@ -158,9 +160,8 @@ private:
       std::vector<Eigen::Triplet<double>> &jacobian,
       const std::array<int, Dim> &num_map_points, int i,
       const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
-      const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+      const Eigen::Matrix<double, Dim, n_transformation_params_>
           &dPoint_dTransformation,
-      const std::vector<pcl::PointCloud<PointType>> &point_clouds,
       const std::array<typename Map<Dim>::index_t, (1 << Dim)>
           &interpolation_point_indices,
       const Eigen::VectorXd &interpolation_weights,

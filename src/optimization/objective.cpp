@@ -27,8 +27,8 @@ int ObjectiveFunctor<Dim>::operator()(const Eigen::VectorXd &x,
 template <int Dim>
 std::pair<State<Dim>, std::array<Map<Dim>, Dim>>
 ObjectiveFunctor<Dim>::compute_state_and_derivatives(
-    const Eigen::VectorXd &x, const MapArgs<Dim> &map_args) const {
-  State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args);
+    const Eigen::VectorXd &x) const {
+  State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
   std::array<Map<Dim>, Dim> derivatives = state.map_.df();
   return std::make_pair(state, derivatives);
 }
@@ -37,9 +37,8 @@ template <int Dim>
 void ObjectiveFunctor<Dim>::fill_jacobian_dense(
     Eigen::MatrixXd &jacobian, const std::array<int, Dim> &num_map_points,
     int i, const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
-    const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+    const Eigen::Matrix<double, Dim, n_transformation_params_>
         &dPoint_dTransformation,
-    const std::vector<pcl::PointCloud<PointType>> &point_clouds,
     const std::array<typename Map<Dim>::index_t, (1 << Dim)>
         &interpolation_point_indices,
     const Eigen::VectorXd &interpolation_weights,
@@ -61,12 +60,12 @@ void ObjectiveFunctor<Dim>::fill_jacobian_dense(
   for (int d = 0; d < Dim; ++d) {
     total_map_points *= num_map_points[d];
   }
-  const int offset = total_map_points +
-                     (transformation_index - 1) * (Dim + (Dim == 3 ? 3 : 1));
+  const int offset =
+      total_map_points + (transformation_index - 1) * n_transformation_params_;
 
-  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+  Eigen::Matrix<double, 1, n_transformation_params_> dDF_dTransformation =
       dDF_dPoint * dPoint_dTransformation;
-  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+  for (int d = 0; d < n_transformation_params_; ++d) {
     jacobian(i, offset + d) = residual_factor * dDF_dTransformation(d);
   }
 }
@@ -76,9 +75,8 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
     std::vector<Eigen::Triplet<double>> &jacobian,
     const std::array<int, Dim> &num_map_points, int i,
     const Eigen::Matrix<double, 1, Dim> &dDF_dPoint,
-    const Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
+    const Eigen::Matrix<double, Dim, n_transformation_params_>
         &dPoint_dTransformation,
-    const std::vector<pcl::PointCloud<PointType>> &point_clouds,
     const std::array<typename Map<Dim>::index_t, (1 << Dim)>
         &interpolation_point_indices,
     const Eigen::VectorXd &interpolation_weights,
@@ -101,13 +99,13 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
     total_map_points *= num_map_points[d];
   }
 
-  const int offset = total_map_points +
-                     (transformation_index - 1) * (Dim + (Dim == 3 ? 3 : 1));
+  const int offset =
+      total_map_points + (transformation_index - 1) * n_transformation_params_;
 
-  Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> dDF_dTransformation =
+  Eigen::Matrix<double, 1, n_transformation_params_> dDF_dTransformation =
       dDF_dPoint * dPoint_dTransformation;
 
-  for (int d = 0; d < Dim + (Dim == 3 ? 3 : 1); ++d) {
+  for (int d = 0; d < n_transformation_params_; ++d) {
     jacobian.emplace_back(i, offset + d,
                           residual_factor * dDF_dTransformation(d));
   }
@@ -116,44 +114,12 @@ void ObjectiveFunctor<Dim>::fill_jacobian_sparse(
 template <int Dim>
 int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x,
                               Eigen::MatrixXd &jacobian) const {
-  const auto [state, derivatives] = compute_state_and_derivatives(x, map_args_);
+  const auto [state, derivatives] = compute_state_and_derivatives(x);
   jacobian.setZero(values(), inputs());
 
   const auto &point_value =
       generate_points_and_desired_values(state, point_clouds_, objective_args_);
-  for (int i = 0; i < point_value.size(); ++i) {
-    const auto &[point, desired_value] = point_value[i];
-    auto [interpolation_indices, interpolation_weights] =
-        get_interpolation_values(point, state.map_);
-
-    Eigen::Matrix<double, 1, Dim> dDF_dPoint =
-        compute_approximate_derivative<Dim>(derivatives, point);
-
-    double factor = i % (objective_args_.scanline_points + 1) == 0
-                        ? objective_args_.scan_point_factor
-                        : objective_args_.scan_line_factor;
-
-    const int transformation_index =
-        std::floor(i / (point_value.size() / point_clouds_.size()));
-    auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
-        point, state.transformations_[transformation_index]);
-    fill_jacobian_dense(jacobian, map_args_.num_points, i, dDF_dPoint,
-                        dPoint_dTransformation, point_clouds_,
-                        interpolation_indices, interpolation_weights,
-                        transformation_index, factor);
-  }
-  return 0;
-}
-
-template <int Dim>
-int ObjectiveFunctor<Dim>::sparse_df(
-    const Eigen::VectorXd &x, Eigen::SparseMatrix<double> &jacobian) const {
-  const auto [state, derivatives] = compute_state_and_derivatives(x, map_args_);
-  std::vector<Eigen::Triplet<double>> tripletList;
-
-  const auto &point_value =
-      generate_points_and_desired_values(state, point_clouds_, objective_args_);
-  for (int i = 0; i < point_value.size(); ++i) {
+  for (size_t i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
     if (!state.map_.in_bounds(point)) {
       continue;
@@ -172,13 +138,49 @@ int ObjectiveFunctor<Dim>::sparse_df(
                         : objective_args_.scan_line_factor;
 
     const int transformation_index =
-        std::floor(i / (point_value.size() / point_clouds_.size()));
+        i / (point_value.size() / point_clouds_.size());
+    auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
+        point, state.transformations_[transformation_index]);
+    fill_jacobian_dense(jacobian, map_args_.num_points, i, dDF_dPoint,
+                        dPoint_dTransformation, interpolation_indices,
+                        interpolation_weights, transformation_index, factor);
+  }
+  return 0;
+}
+
+template <int Dim>
+int ObjectiveFunctor<Dim>::sparse_df(
+    const Eigen::VectorXd &x, Eigen::SparseMatrix<double> &jacobian) const {
+  const auto [state, derivatives] = compute_state_and_derivatives(x);
+  std::vector<Eigen::Triplet<double>> tripletList;
+
+  const auto &point_value =
+      generate_points_and_desired_values(state, point_clouds_, objective_args_);
+  for (size_t i = 0; i < point_value.size(); ++i) {
+    const auto &[point, desired_value] = point_value[i];
+    if (!state.map_.in_bounds(point)) {
+      continue;
+    }
+    auto [interpolation_indices, interpolation_weights] =
+        get_interpolation_values(point, state.map_);
+
+    Eigen::Matrix<double, 1, Dim> dDF_dPoint;
+    for (int d = 0; d < Dim; ++d) {
+      dDF_dPoint[d] =
+          derivatives[d].in_bounds(point) ? derivatives[d].value(point) : 0;
+    }
+
+    double factor = i % (objective_args_.scanline_points + 1) == 0
+                        ? objective_args_.scan_point_factor
+                        : objective_args_.scan_line_factor;
+
+    const int transformation_index =
+        i / (point_value.size() / point_clouds_.size());
     auto dPoint_dTransformation = compute_transformation_derivative<Dim>(
         point, state.transformations_[transformation_index]);
     fill_jacobian_sparse(tripletList, map_args_.num_points, i, dDF_dPoint,
-                         dPoint_dTransformation, point_clouds_,
-                         interpolation_indices, interpolation_weights,
-                         transformation_index, factor);
+                         dPoint_dTransformation, interpolation_indices,
+                         interpolation_weights, transformation_index, factor);
   }
 
   jacobian.resize(values(), inputs());
