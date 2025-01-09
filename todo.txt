@@ -1,0 +1,20 @@
+Done:
+Try with negative scan line points
+Adjusting the weight of the scan line vs scan point residuals
+Fix first frame to ground truth
+Try map init from ground truth
+
+
+Todo:
+Implement the Jacobian
+Implement Gauss-Newton/Levenberg-Marquardt
+Search for c++ library for sparse matrix invertation (suite sparse), Cholesky decomposition
+
+Add smoothing term for the SDF
+
+More complicated scenarios
+
+
+Handle points being projected outside the map properly:
+Affected is the interpolation and anything that uses it, e.g. the derivatives
+Currently the default value is 0

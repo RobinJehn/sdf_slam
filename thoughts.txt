@@ -1,0 +1,24 @@
+We want to minimise the distance between the projected points and the closest surface:
+Problem: 
+Setting the distance to 0 everywhere minimise the objective function
+
+Maximise the sum of the distance values:
+Problem: 
+No continuity, goes to infinity everywhere where there is no point that uses it in the interpolation.
+Lets say a point is at a grid node, Changing the value of that node doesn't change anything, it will be
+x more for the map sum and x more for the distance, they cancel each other out
+Map with just 1 point at (0,0) and we want to minimise M(0, 0) - m_00 = m_00 - m_00 = 0
+Thus it has to be M(0, 0) - \lambda m_00 = (1 - \lambda)m_00, which is positive 1 > \lambda > 0
+Relies on a decent initial, otherwise if changing the transformations doesn't bring points closer together,
+there is no incentive to change the transformation
+
+In other words, a map is optimal if the 
+
+
+We somehow need a penalty for setting everything to zero when that cannot be the case, otherwise 
+stacking all scans on top of each other gives the global minimum
+
+We somehow need to incorporate the information, that space a laser went through should be empty
+
+
+We want the gradient to be 1 everywhere
