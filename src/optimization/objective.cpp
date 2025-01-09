@@ -56,7 +56,7 @@ ObjectiveFunctor<Dim>::compute_jacobian_triplets(
   const auto [state, derivatives] = compute_state_and_derivatives(x);
   const auto &point_value =
       generate_points_and_desired_values(state, point_clouds_, objective_args_);
-  const double total_map_points = state.map_.get_num_points();
+  const double total_map_points = state.map_.total_points();
 
   // Point residuals
   for (size_t i = 0; i < point_value.size(); ++i) {
@@ -94,6 +94,8 @@ ObjectiveFunctor<Dim>::compute_jacobian_triplets(
   }
 
   // Smoothness residuals
+  fill_dRoughness_dMap(tripletList, derivatives,
+                       objective_args_.smoothness_factor);
 
   return tripletList;
 }
@@ -113,6 +115,18 @@ void ObjectiveFunctor<Dim>::fill_dMap(
 
     const double dMap = residual_factor * interpolation_weights[j];
     tripletList.emplace_back(residual_index, flattened_index, dMap);
+  }
+}
+
+template <int Dim>
+void ObjectiveFunctor<Dim>::fill_dRoughness_dMap(
+    std::vector<Eigen::Triplet<double>> &tripletList,
+    const std::array<Map<Dim>, Dim> &map_derivatives,
+    const double factor) const {
+  const std::vector<double> dRoughness_dMap =
+      compute_dRoughness_dMap<Dim>(map_derivatives);
+  for (size_t i = 0; i < dRoughness_dMap.size(); ++i) {
+    tripletList.emplace_back(values() - 1, i, factor * dRoughness_dMap[i]);
   }
 }
 

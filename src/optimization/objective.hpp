@@ -107,6 +107,10 @@ private:
       const Eigen::VectorXd &interpolation_weights,
       const int transformation_index, const double residual_factor) const;
 
+  void fill_dRoughness_dMap(std::vector<Eigen::Triplet<double>> &tripletList,
+                            const std::array<Map<Dim>, Dim> &map_derivatives,
+                            const double factor) const;
+
   /**
    * @brief Compute the partial derivatives of the residual with respect to the
    * map.

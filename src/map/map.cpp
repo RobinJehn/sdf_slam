@@ -86,16 +86,12 @@ template <int Dim>
 typename Map<Dim>::index_t Map<Dim>::get_grid_indices(const Vector &p) const {
   check_bounds(p);
 
+  const int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
+  const int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
   if constexpr (Dim == 2) {
-    int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
-    int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
-
     return {x, y};
-  } else if constexpr (Dim == 3) {
-    int x = static_cast<int>(floor((p.x() - min_coords_[0]) / d_[0]));
-    int y = static_cast<int>(floor((p.y() - min_coords_[1]) / d_[1]));
-    int z = static_cast<int>(floor((p.z() - min_coords_[2]) / d_[2]));
-
+  } else {
+    const int z = static_cast<int>(floor((p.z() - min_coords_[2]) / d_[2]));
     return {x, y, z};
   }
 }
@@ -167,6 +163,28 @@ template <int Dim> double Map<Dim>::value(const Vector &p) const {
   }
 }
 
+template <int Dim>
+std::vector<typename Map<Dim>::index_t>
+Map<Dim>::get_neighbours(const index_t &index) const {
+  std::vector<index_t> neighbours;
+
+  // Handle edges and corners
+  for (int i = 0; i < Dim; ++i) {
+    if (index[i] > 0) {
+      index_t neighbour = index;
+      neighbour[i] -= 1;
+      neighbours.push_back(neighbour);
+    }
+    if (index[i] < num_points_[i] - 1) {
+      index_t neighbour = index;
+      neighbour[i] += 1;
+      neighbours.push_back(neighbour);
+    }
+  }
+
+  return neighbours;
+}
+
 template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
   // Initialize the derivative maps with the same grid setup as the original
   // map
@@ -190,8 +208,8 @@ template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
   for (int i = 0; i < num_points_[0]; ++i) {
     for (int j = 0; j < num_points_[1]; ++j) {
       if constexpr (Dim == 2) {
-        double grad_x = 0.0f;
-        double grad_y = 0.0f;
+        double grad_x = 0.0;
+        double grad_y = 0.0;
 
         // Compute gradient in the x-direction
         if (i > 0 && i < num_points_[0] - 1) {
@@ -218,9 +236,9 @@ template <int Dim> std::array<Map<Dim>, Dim> Map<Dim>::df() const {
         derivatives[1].set_value_at({i, j}, grad_y);
       } else if constexpr (Dim == 3) {
         for (int k = 0; k < num_points_[2]; ++k) {
-          double grad_x = 0.0f;
-          double grad_y = 0.0f;
-          double grad_z = 0.0f;
+          double grad_x = 0.0;
+          double grad_y = 0.0;
+          double grad_z = 0.0;
 
           // Compute gradient in the x-direction
           if (i > 0 && i < num_points_[0] - 1) {

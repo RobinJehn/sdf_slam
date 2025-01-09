@@ -136,7 +136,7 @@ int main() {
 
     const int num_points = point_clouds[0].size() * point_clouds.size();
     const int num_residuals =
-        num_points * (args.objective_args.scanline_points + 1);
+        num_points * (args.objective_args.scanline_points + 1) + 1;
 
     // Initialize the map and set up the optimization parameters
     Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth);

@@ -3,6 +3,7 @@
 #include "map/utils.hpp"
 #include "state/state.hpp"
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -290,6 +291,17 @@ Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> compute_dResidual_dTransform(
     const Eigen::Matrix<double, Dim, 1> &point,
     const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
     const bool numerical = false);
+
+template <int Dim>
+Eigen::Matrix<double, Dim, 1>
+compute_dGrad_dNeighbour(const typename Map<Dim>::index_t &index,
+                         const typename Map<Dim>::index_t &neighbour,
+                         const std::array<double, Dim> &grid_size,
+                         const std::array<int, Dim> &num_points);
+
+template <int Dim>
+std::vector<double>
+compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives);
 
 /**
  * @brief Computes the derivative of a 3D transformation.

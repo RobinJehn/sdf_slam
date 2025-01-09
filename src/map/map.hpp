@@ -37,8 +37,9 @@ public:
   Map(const MapArgs<Dim> &args);
 
   int get_num_points(int dim) const { return num_points_[dim]; }
+  std::array<int, Dim> get_num_points() const { return num_points_; }
 
-  int get_num_points() const {
+  int total_points() const {
     int total_points = 1;
     for (int i = 0; i < Dim; ++i) {
       total_points *= num_points_[i];
@@ -50,6 +51,7 @@ public:
   double get_max_coord(int dim) const { return max_coords_[dim]; }
 
   double get_d(int dim) const { return d_[dim]; }
+  std::array<double, Dim> get_d() const { return d_; }
 
   void set_value_at(const index_t &index, const double value);
 
@@ -61,6 +63,17 @@ public:
 
   /** @brief Get the maximum map value */
   double get_max_value() const;
+
+  /**
+   * @brief Retrieves the neighboring indices of a given index in the map.
+   *
+   * Returns 2 * Dim neighbors for a given index in the map. Edges and corners
+   * have fewer neighbors.
+   *
+   * @param index The index for which to find the neighbors.
+   * @return the indices of the neighbors
+   */
+  std::vector<index_t> get_neighbours(const index_t &index) const;
 
   /**
    * @brief Check whether p is in bounds of the map

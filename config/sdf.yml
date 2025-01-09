@@ -1,12 +1,13 @@
 objective_args:
-  scanline_points: 10
+  scanline_points: 20
   step_size: 0.1
   both_directions: true
-  scan_line_factor: 1
-  scan_point_factor: 1
+  scan_line_factor: 1.0
+  scan_point_factor: 1.0
+  smoothness_factor: 5.0
 
 map_args:
-  num_points: [100, 100]
+  num_points: [40, 40]
   min_coords: [-3, -7]
   max_coords: [9.28319, 4] # 2 * M_PI + 3
 
@@ -14,10 +15,10 @@ optimization_args:
   max_iters: 50
   initial_lambda: 1
   tolerance: 1e-3
-  lambda_factor: 3
+  lambda_factor: 1
   visualize: true
   std_out: true
 
 general_args:
   from_ground_truth: false
-  data_path: ../data/multi_scan # relative to build directory
+  data_path: ../data/scans # relative to build directory

@@ -21,9 +21,11 @@ template <int Dim> Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.objective_args.both_directions =
       config["objective_args"]["both_directions"].as<bool>();
   args.objective_args.scan_line_factor =
-      config["objective_args"]["scan_line_factor"].as<int>();
+      config["objective_args"]["scan_line_factor"].as<double>();
   args.objective_args.scan_point_factor =
-      config["objective_args"]["scan_point_factor"].as<int>();
+      config["objective_args"]["scan_point_factor"].as<double>();
+  args.objective_args.smoothness_factor =
+      config["objective_args"]["smoothness_factor"].as<double>();
 
   // Read map_args from YAML
   if constexpr (Dim == 2) {

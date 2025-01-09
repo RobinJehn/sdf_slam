@@ -134,7 +134,7 @@ Eigen::Matrix3d dR_dpsi(const double theta, const double phi,
 }
 
 template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state) {
-  const int map_points = state.map_.get_num_points();
+  const int map_points = state.map_.total_points();
   const int num_transformations = state.transformations_.size();
 
   Eigen::VectorXd flattened(
@@ -206,8 +206,7 @@ unflatten(const Eigen::VectorXd &flattened_state,
   }
 
   // Calculate the number of transformations
-  const int num_transform_params =
-      flattened_state.size() - map.get_num_points();
+  const int num_transform_params = flattened_state.size() - map.total_points();
   const int num_params_per_transform = Dim + (Dim == 3 ? 3 : 1);
   const int num_transformations =
       num_transform_params / num_params_per_transform + 1;
@@ -440,7 +439,7 @@ Eigen::VectorXd compute_residuals(
   const auto &point_value =
       generate_points_and_desired_values(state, point_clouds, objective_args);
 
-  Eigen::VectorXd residuals(point_value.size());
+  Eigen::VectorXd residuals(point_value.size() + 1);
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
 
@@ -455,39 +454,38 @@ Eigen::VectorXd compute_residuals(
     residuals(i) = factor * (interpolated_value - desired_value);
   }
 
-  // // Regularization term
-  // double roughness = 0;
-  // const std::array<Map<Dim>, Dim> derivatives = state.map_.df();
-  // for (int i = 0; i < derivatives[0].get_num_points(0); i++) {
-  //   for (int j = 0; j < derivatives[0].get_num_points(1); j++) {
-  //     if constexpr (Dim == 2) {
-  //       const typename Map<Dim>::index_t index = {i, j};
-  //       const double dx = derivatives[0].get_value_at(index);
-  //       const double dy = derivatives[1].get_value_at(index);
+  // Regularization term
+  double roughness = 0;
+  const std::array<Map<Dim>, Dim> derivatives = state.map_.df();
+  for (int i = 0; i < derivatives[0].get_num_points(0); i++) {
+    for (int j = 0; j < derivatives[0].get_num_points(1); j++) {
+      if constexpr (Dim == 2) {
+        const typename Map<Dim>::index_t index = {i, j};
+        const double dx = derivatives[0].get_value_at(index);
+        const double dy = derivatives[1].get_value_at(index);
 
-  //       const double norm = std::sqrt(dx * dx + dy * dy);
-  //       const double norm_diff = std::abs(1 - norm);
-  //       roughness += norm_diff;
-  //     } else {
-  //       for (int k = 0; k < derivatives[0].get_num_points(2); k++) {
-  //         const typename Map<Dim>::index_t index = {i, j, k};
-  //         const double dx = derivatives[0].get_value_at(index);
-  //         const double dy = derivatives[1].get_value_at(index);
-  //         const double dz = derivatives[2].get_value_at(index);
+        const double norm = std::sqrt(dx * dx + dy * dy);
+        const double norm_diff = std::abs(norm - 1);
+        roughness += norm_diff;
+      } else {
+        for (int k = 0; k < derivatives[0].get_num_points(2); k++) {
+          const typename Map<Dim>::index_t index = {i, j, k};
+          const double dx = derivatives[0].get_value_at(index);
+          const double dy = derivatives[1].get_value_at(index);
+          const double dz = derivatives[2].get_value_at(index);
 
-  //         const double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
-  //         const double norm_diff = std::abs(1 - norm);
-  //         roughness += norm_diff;
-  //       }
-  //     }
-  //   }
-  // }
+          const double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
+          const double norm_diff = std::abs(norm - 1);
+          roughness += norm_diff;
+        }
+      }
+    }
+  }
 
-  // const double average_roughness = roughness /
-  // derivatives[0].get_num_points();
+  const double average_roughness = roughness / derivatives[0].total_points();
 
-  // residuals(point_value.size()) =
-  //     objective_args.smoothness_factor * average_roughness;
+  residuals(point_value.size()) =
+      objective_args.smoothness_factor * average_roughness;
 
   return residuals;
 }
@@ -703,6 +701,136 @@ compute_derivative_map_value_wrt_transformation_numerical(
   return derivative;
 }
 
+template <int Dim>
+Eigen::Matrix<double, Dim, 1>
+compute_dGrad_dNeighbour(const typename Map<Dim>::index_t &index,
+                         const typename Map<Dim>::index_t &neighbour,
+                         const std::array<double, Dim> &grid_size,
+                         const std::array<int, Dim> &num_points) {
+  Eigen::Matrix<double, Dim, 1> dGrad_dS;
+
+  // This matches the finite difference approximation
+  for (int i = 0; i < Dim; ++i) {
+    if (neighbour[i] == index[i]) {
+      dGrad_dS[i] = 0;
+      continue;
+    }
+    // Handle edges
+    const int direction = (index[i] > neighbour[i]) ? 1 : -1;
+    const bool is_edge = index[i] == 0 || index[i] == num_points[i] - 1;
+    const int diff_factor = is_edge ? 1 : 2; // 1 for edges, 2 for interior
+    dGrad_dS[i] = direction / (diff_factor * grid_size[i]);
+  }
+
+  return dGrad_dS;
+}
+
+template <int Dim>
+std::vector<double>
+compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives) {
+  std::vector<double> gradient_magnitude;
+  std::vector<int> sign_f;
+  for (int i = 0; i < map_derivatives[0].get_num_points(0); i++) {
+    for (int j = 0; j < map_derivatives[0].get_num_points(1); j++) {
+      if constexpr (Dim == 2) {
+        const typename Map<Dim>::index_t index = {i, j};
+        const double dx = map_derivatives[0].get_value_at(index);
+        const double dy = map_derivatives[1].get_value_at(index);
+
+        const double norm = std::sqrt(dx * dx + dy * dy);
+        const int sign = norm - 1 > 0 ? 1 : -1;
+
+        gradient_magnitude.push_back(norm);
+        sign_f.push_back(sign);
+      } else {
+        for (int k = 0; k < map_derivatives[0].get_num_points(2); k++) {
+          const typename Map<Dim>::index_t index = {i, j, k};
+          const double dx = map_derivatives[0].get_value_at(index);
+          const double dy = map_derivatives[1].get_value_at(index);
+          const double dz = map_derivatives[2].get_value_at(index);
+
+          const double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
+          const int sign = norm - 1 > 0 ? 1 : -1;
+
+          gradient_magnitude.push_back(norm);
+          sign_f.push_back(sign);
+        }
+      }
+    }
+  }
+
+  // Backward Pass
+  const int total_grid_points = map_derivatives[0].total_points();
+  std::vector<double> dRoughness_dMap(total_grid_points, 0.0);
+  const std::array<double, Dim> grid_size = map_derivatives[0].get_d();
+  const std::array<int, Dim> num_points = map_derivatives[0].get_num_points();
+
+  for (int i = 0; i < map_derivatives[0].get_num_points(0); i++) {
+    for (int j = 0; j < map_derivatives[0].get_num_points(1); j++) {
+      if constexpr (Dim == 2) {
+        const typename Map<Dim>::index_t idx = {i, j};
+        const int idx_flat = map_index_to_flattened_index<Dim>(num_points, idx);
+        const std::vector<typename Map<Dim>::index_t> neighbors =
+            map_derivatives[0].get_neighbours(idx);
+
+        for (int l = 0; l < neighbors.size(); ++l) {
+          const typename Map<Dim>::index_t n_idx = neighbors[l];
+          const int n_idx_flat =
+              map_index_to_flattened_index<Dim>(num_points, n_idx);
+
+          const double sign_f_i = sign_f[n_idx_flat];
+          const double grad_mag_i = gradient_magnitude[n_idx_flat];
+
+          if (grad_mag_i == 0) {
+            continue;
+          }
+
+          const Eigen::Vector2d grad_i = {
+              map_derivatives[0].get_value_at(n_idx),
+              map_derivatives[1].get_value_at(n_idx)};
+          const Eigen::Vector2d dGrad_dNeighbour =
+              compute_dGrad_dNeighbour<Dim>(idx, n_idx, grid_size, num_points);
+          const double dot_product = dGrad_dNeighbour.dot(grad_i);
+
+          dRoughness_dMap[idx_flat] +=
+              (1.0 / total_grid_points) * sign_f_i * (dot_product / grad_mag_i);
+        }
+      } else {
+        for (int k = 0; k < map_derivatives[0].get_num_points(2); k++) {
+          const typename Map<Dim>::index_t idx = {i, j, k};
+          const int idx_flat =
+              map_index_to_flattened_index<Dim>(num_points, idx);
+          const std::vector<typename Map<Dim>::index_t> neighbors =
+              map_derivatives[0].get_neighbours(idx);
+
+          for (int l = 0; l < neighbors.size(); ++l) {
+            const typename Map<Dim>::index_t n_idx = neighbors[l];
+            const int n_idx_flat =
+                map_index_to_flattened_index<Dim>(num_points, n_idx);
+
+            const double sign_f_i = sign_f[n_idx_flat];
+            const double grad_mag_i = gradient_magnitude[n_idx_flat];
+
+            const Eigen::Vector3d grad_i = {
+                map_derivatives[0].get_value_at(n_idx),
+                map_derivatives[1].get_value_at(n_idx),
+                map_derivatives[2].get_value_at(n_idx)};
+            const Eigen::Vector3d dGrad_dNeighbour =
+                compute_dGrad_dNeighbour<Dim>(idx, n_idx, grid_size,
+                                              num_points);
+            const double dot_product = dGrad_dNeighbour.dot(grad_i);
+
+            dRoughness_dMap[idx_flat] += (1.0 / total_grid_points) * sign_f_i *
+                                         (dot_product / grad_mag_i);
+          }
+        }
+      }
+    }
+  }
+
+  return dRoughness_dMap;
+}
+
 // Explicit template instantiation
 template Eigen::VectorXd flatten<2>(const State<2> &state);
 template Eigen::VectorXd flatten<3>(const State<3> &state);
@@ -797,3 +925,20 @@ template Eigen::Matrix<double, 1, 6> compute_dResidual_dTransform<3>(
     const Eigen::Matrix<double, 3, 1> &point,
     const Eigen::Transform<double, 3, Eigen::Affine> &transform,
     const bool numerical);
+
+template Eigen::Matrix<double, 2, 1>
+compute_dGrad_dNeighbour<2>(const typename Map<2>::index_t &index,
+                            const typename Map<2>::index_t &neighbour,
+                            const std::array<double, 2> &grid_size,
+                            const std::array<int, 2> &num_points);
+
+template Eigen::Matrix<double, 3, 1>
+compute_dGrad_dNeighbour<3>(const typename Map<3>::index_t &index,
+                            const typename Map<3>::index_t &neighbour,
+                            const std::array<double, 3> &grid_size,
+                            const std::array<int, 3> &num_points);
+
+template std::vector<double>
+compute_dRoughness_dMap<2>(const std::array<Map<2>, 2> &map_derivatives);
+template std::vector<double>
+compute_dRoughness_dMap<3>(const std::array<Map<3>, 3> &map_derivatives);
