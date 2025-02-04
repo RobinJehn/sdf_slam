@@ -47,9 +47,17 @@ public:
     return total_points;
   }
 
+  Vector get_min_coords() const { return min_coords_; }
   double get_min_coord(int dim) const { return min_coords_[dim]; }
+
+  Vector get_max_coords() const { return max_coords_; }
   double get_max_coord(int dim) const { return max_coords_[dim]; }
 
+  /**
+   * @brief Get the size of the map in a certain dimension
+   *
+   * @param dim The dimension
+   */
   double get_d(int dim) const { return d_[dim]; }
   std::array<double, Dim> get_d() const { return d_; }
 
