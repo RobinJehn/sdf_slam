@@ -1,9 +1,12 @@
 #pragma once
 
-#include "utils.hpp"
 #include <Eigen/Dense>
 #include <functional>
 #include <unordered_map>
+
+#include "utils.hpp"
+
+enum class DerivativeType { CENTRAL, UPWIND };
 
 /**
  * @brief Generic class to represent a map in 2D or 3D. The map is represented
@@ -12,10 +15,11 @@
  *
  * @tparam Dim The dimension of the map (2 or 3)
  */
-template <int Dim> class Map {
+template <int Dim>
+class Map {
   static_assert(Dim == 2 || Dim == 3, "Dim must be 2 or 3");
 
-public:
+ public:
   using index_t = std::array<int, Dim>;
   using Vector = Eigen::Matrix<double, Dim, 1>;
 
@@ -96,10 +100,12 @@ public:
    * This function computes the derivative of the map in each dimension
    * using finite differences with neighboring nodes.
    *
+   * @param type The type of derivative to compute
+   *
    * @return std::array<Map<Dim>, Dim> A set of maps representing the derivative
    * in each dimension
    */
-  std::array<Map<Dim>, Dim> df() const;
+  std::array<Map<Dim>, Dim> df(const DerivativeType &type = DerivativeType::CENTRAL) const;
 
   /**
    * @brief Computes the grid indices for a given point in the map.
@@ -111,7 +117,7 @@ public:
    */
   index_t get_grid_indices(const Vector &p) const;
 
-private:
+ private:
   /** Values at grid points */
   std::unordered_map<index_t, double, std::hash<index_t>> grid_values_;
 
@@ -136,7 +142,8 @@ private:
 
 /** Custom hash function for index_t */
 namespace std {
-template <int Dim> struct hash<std::array<int, Dim>> {
+template <int Dim>
+struct hash<std::array<int, Dim>> {
   size_t operator()(const std::array<int, Dim> &arr) const {
     std::hash<int> hasher;
     size_t seed = 0;
@@ -146,4 +153,4 @@ template <int Dim> struct hash<std::array<int, Dim>> {
     return seed;
   }
 };
-}; // namespace std
+};  // namespace std
