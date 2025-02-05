@@ -1,20 +1,21 @@
+#include <ceres/ceres.h>
+#include <glog/logging.h>
+
+#include <Eigen/Dense>
+#include <fstream>
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
 #include "map/map.hpp"
 #include "map/utils.hpp"
 #include "optimization/objective_ceres.hpp"
 #include "optimization/utils.hpp"
 #include "scan/generate.hpp"
 #include "state/state.hpp"
-#include <Eigen/Dense>
-#include <ceres/ceres.h>
-#include <fstream>
-#include <glog/logging.h>
-#include <iostream>
-#include <opencv2/opencv.hpp>
 
 // Helper function to plot a map with sine function overlay
-void plot_map(const Map<2> &map, int map_size_x, int map_size_y, double x_min,
-              double x_max, double y_min, double y_max,
-              const std::string &window_name) {
+void plot_map(const Map<2> &map, int map_size_x, int map_size_y, double x_min, double x_max,
+              double y_min, double y_max, const std::string &window_name) {
   const double max_val_all = 5.0;
   const double min_val_all = -5.0;
 
@@ -46,8 +47,7 @@ void plot_map(const Map<2> &map, int map_size_x, int map_size_y, double x_min,
 }
 
 // Helper function to output optimization results to file
-void save_summary_to_file(const std::string &filename,
-                          const ceres::Solver::Summary &summary) {
+void save_summary_to_file(const std::string &filename, const ceres::Solver::Summary &summary) {
   std::ofstream summary_file(filename);
   if (summary_file.is_open()) {
     summary_file << summary.FullReport() << "\n";
@@ -68,8 +68,7 @@ int main(int argc, char *argv[]) {
   double theta_scanner_2 = 8 * M_PI / 16;
 
   // Create the scans
-  const std::vector<Eigen::Vector2d> scanner_positions = {scanner_position_1,
-                                                          scanner_position_2};
+  const std::vector<Eigen::Vector2d> scanner_positions = {scanner_position_1, scanner_position_2};
   const std::vector<double> thetas = {theta_scanner_1, theta_scanner_2};
   const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds =
       create_scans(scanner_positions, thetas);
@@ -91,8 +90,7 @@ int main(int argc, char *argv[]) {
   Map<2> map = init_map(map_args, true);
 
   // Plot the initial map
-  plot_map(map, map_size_x, map_size_y, x_min, x_max, y_min, y_max,
-           "Initial Map");
+  plot_map(map, map_size_x, map_size_y, x_min, x_max, y_min, y_max, "Initial Map");
 
   // Set up initial transformations
   Eigen::Transform<double, 2, Eigen::Affine> initial_frame_1 =
@@ -108,21 +106,17 @@ int main(int argc, char *argv[]) {
   objective_args.step_size = 0.1;
   objective_args.both_directions = true;
 
-  const int number_of_scanned_points =
-      point_clouds[0].size() * point_clouds.size();
-  const int num_residuals =
-      number_of_scanned_points * (objective_args.scanline_points + 1);
-  const int num_parameters =
-      (point_clouds.size() - 1) * 3 + map_size_x * map_size_y;
+  const int number_of_scanned_points = point_clouds[0].size() * point_clouds.size();
+  const int num_residuals = number_of_scanned_points * (objective_args.scanline_points + 1);
+  const int num_parameters = (point_clouds.size() - 1) * 3 + map_size_x * map_size_y;
 
   // Objective Functor for 2D with Ceres
   ObjectiveFunctorCeres<2> *functor = new ObjectiveFunctorCeres<2>(
-      map_args, point_clouds, objective_args, num_parameters, num_residuals,
-      initial_frame_1);
+      map_args, point_clouds, objective_args, num_parameters, num_residuals, initial_frame_1);
 
   // Flatten the state into the parameter vector
-  std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {
-      initial_frame_1, initial_frame_2};
+  std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations = {initial_frame_1,
+                                                                             initial_frame_2};
   Eigen::VectorXd params = flatten<2>(State<2>(map, transformations));
 
   // Ensure parameter size consistency
@@ -156,8 +150,8 @@ int main(int argc, char *argv[]) {
   // Unflatten the optimized parameters back into the state
   State<2> optimized_state = unflatten<2>(params, initial_frame_1, map_args);
 
-  plot_map(optimized_state.map_, map_size_x, map_size_y, x_min, x_max, y_min,
-           y_max, "Optimized Map");
+  plot_map(optimized_state.map_, map_size_x, map_size_y, x_min, x_max, y_min, y_max,
+           "Optimized Map");
 
   return 0;
 }
