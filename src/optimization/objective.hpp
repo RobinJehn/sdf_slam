@@ -1,16 +1,19 @@
 #pragma once
-#include "map/map.hpp"
-#include "map/utils.hpp"
-#include "optimization/utils.hpp"
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <array>
 #include <iostream>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <vector>
 
-template <int Dim> class State;
+#include "map/map.hpp"
+#include "map/utils.hpp"
+#include "optimization/utils.hpp"
+
+template <int Dim>
+class State;
 
 template <typename _Scalar, int NX = Eigen::Dynamic, int NY = Eigen::Dynamic>
 struct Functor {
@@ -18,8 +21,7 @@ struct Functor {
   enum { InputsAtCompileTime = NX, ValuesAtCompileTime = NY };
   typedef Eigen::Matrix<Scalar, InputsAtCompileTime, 1> InputType;
   typedef Eigen::Matrix<Scalar, ValuesAtCompileTime, 1> ValueType;
-  typedef Eigen::Matrix<Scalar, ValuesAtCompileTime, InputsAtCompileTime>
-      JacobianType;
+  typedef Eigen::Matrix<Scalar, ValuesAtCompileTime, InputsAtCompileTime> JacobianType;
 
   int m_inputs, m_values;
 
@@ -30,16 +32,15 @@ struct Functor {
   int values() const { return m_values; }
 };
 
-template <int Dim> struct ObjectiveFunctor : Functor<double> {
-  using PointType =
-      typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
+template <int Dim>
+struct ObjectiveFunctor : Functor<double> {
+  using PointType = typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
   using Vector = std::conditional_t<Dim == 2, Eigen::Vector2d, Eigen::Vector3d>;
 
-  ObjectiveFunctor(
-      const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
-      const std::vector<pcl::PointCloud<PointType>> &point_clouds,
-      const ObjectiveArgs &objective_args,
-      const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
+  ObjectiveFunctor(const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
+                   const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+                   const ObjectiveArgs &objective_args,
+                   const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
   /**
    * @brief Calculate the objective function (residuals) for a given input
@@ -59,8 +60,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
    * stored.
    * @return An integer indicating the success or failure of the computation.
    */
-  int sparse_df(const Eigen::VectorXd &x,
-                Eigen::SparseMatrix<double> &jacobian) const;
+  int sparse_df(const Eigen::VectorXd &x, Eigen::SparseMatrix<double> &jacobian) const;
 
   /**
    * @brief Compute the partial derivatives of the objective function
@@ -72,7 +72,7 @@ template <int Dim> struct ObjectiveFunctor : Functor<double> {
    */
   int df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const;
 
-private:
+ private:
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
   const MapArgs<Dim> map_args_;
   const ObjectiveArgs objective_args_;
@@ -91,21 +91,17 @@ private:
    * requirements of the optimization process in the SLAM (Simultaneous
    * Localization and Mapping) context.
    */
-  std::pair<State<Dim>, std::array<Map<Dim>, Dim>>
-  compute_state_and_derivatives(const Eigen::VectorXd &x) const;
+  std::pair<State<Dim>, std::array<Map<Dim>, Dim>> compute_state_and_derivatives(
+      const Eigen::VectorXd &x) const;
 
-  std::vector<Eigen::Triplet<double>>
-  compute_jacobian_triplets(const Eigen::VectorXd &x) const;
+  std::vector<Eigen::Triplet<double>> compute_jacobian_triplets(const Eigen::VectorXd &x) const;
 
   void fill_jacobian_triplets(
-      std::vector<Eigen::Triplet<double>> &tripletList,
-      const int total_map_points, int i,
-      const Eigen::Matrix<double, 1, n_transformation_params_>
-          &dDF_dTransformation,
-      const std::array<typename Map<Dim>::index_t, (1 << Dim)>
-          &interpolation_indices,
-      const Eigen::VectorXd &interpolation_weights,
-      const int transformation_index, const double residual_factor) const;
+      std::vector<Eigen::Triplet<double>> &tripletList, const int total_map_points, int i,
+      const Eigen::Matrix<double, 1, n_transformation_params_> &dDF_dTransformation,
+      const std::array<typename Map<Dim>::index_t, (1 << Dim)> &interpolation_indices,
+      const Eigen::VectorXd &interpolation_weights, const int transformation_index,
+      const double residual_factor) const;
 
   void fill_dRoughness_dMap(std::vector<Eigen::Triplet<double>> &tripletList,
                             const std::array<Map<Dim>, Dim> &map_derivatives,
@@ -124,10 +120,9 @@ private:
    * @param interpolation_weights The weights for the interpolation.
    *
    */
-  void fill_dMap(std::vector<Eigen::Triplet<double>> &tripletList,
-                 const uint residual_index, const double residual_factor,
-                 const std::array<typename Map<Dim>::index_t, (1 << Dim)>
-                     &interpolation_indices,
+  void fill_dMap(std::vector<Eigen::Triplet<double>> &tripletList, const uint residual_index,
+                 const double residual_factor,
+                 const std::array<typename Map<Dim>::index_t, (1 << Dim)> &interpolation_indices,
                  const Eigen::VectorXd &interpolation_weights) const;
 
   /**
@@ -142,9 +137,7 @@ private:
    * @param dTransform The derivative of the residual with respect to the
    * transformation.
    */
-  void fill_dTransform(std::vector<Eigen::Triplet<double>> &tripletList,
-                       const uint residual_index, const double residual_factor,
-                       const uint offset,
-                       const Eigen::Matrix<double, 1, n_transformation_params_>
-                           &dTransform) const;
+  void fill_dTransform(std::vector<Eigen::Triplet<double>> &tripletList, const uint residual_index,
+                       const double residual_factor, const uint offset,
+                       const Eigen::Matrix<double, 1, n_transformation_params_> &dTransform) const;
 };

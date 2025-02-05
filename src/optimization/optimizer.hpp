@@ -1,12 +1,12 @@
 #pragma once
 
 #include <Eigen/Core>
-#include <functional> // For std::function
+#include <functional>  // For std::function
 #include <unsupported/Eigen/NonLinearOptimization>
 
 template <typename FunctorType, typename Scalar = double>
 class LevenbergMarquardtWithCallback {
-public:
+ public:
   using FVectorType = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
   using CallbackType = std::function<void(const FVectorType &, int, Scalar)>;
 
@@ -17,6 +17,6 @@ public:
 
   Eigen::LevenbergMarquardt<FunctorType, Scalar> lm;
 
-private:
+ private:
   CallbackType callback;
 };

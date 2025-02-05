@@ -1,37 +1,39 @@
 #pragma once
 
-#include "map/utils.hpp"
-#include "state/state.hpp"
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+
+#include "map/utils.hpp"
+#include "state/state.hpp"
+
 struct ObjectiveArgs {
   // Scan lines
-  double scan_line_factor = 1; // Factor by which to multiply the scan line
-                               // residuals
-  int scanline_points = 20;    // Number of points along the scan line
-  double step_size = 0.1;      // Step size between points
-  bool both_directions = true; // Whether to add points in both directions
+  double scan_line_factor = 1;  // Factor by which to multiply the scan line
+                                // residuals
+  int scanline_points = 20;     // Number of points along the scan line
+  double step_size = 0.1;       // Step size between points
+  bool both_directions = true;  // Whether to add points in both directions
 
   // Scan points
-  double scan_point_factor = 1; // Factor by which to multiply the scan point
-                                // residuals
+  double scan_point_factor = 1;  // Factor by which to multiply the scan point
+                                 // residuals
 
   // Map smoothness
-  double smoothness_factor = 1; // Factor by which to multiply the smoothness
-                                // term in the objective function
+  double smoothness_factor = 1;  // Factor by which to multiply the smoothness
+                                 // term in the objective function
 };
 
 struct OptimizationArgs {
-  int max_iters = 20;        // Maximum number of iterations
-  double initial_lambda = 1; // Initial lambda in Levenberg-Marquardt
-  double lambda_factor = 1;  // Factor by which lambda is multiplied or divided
-                             // each iteration
-  double tolerance = 1e-3;   // Tolerance for stopping criteria
-  bool visualize = false;    // Whether to visualize the map on each iteration
-  bool std_out = true;       // Whether to print to stdout
+  int max_iters = 20;         // Maximum number of iterations
+  double initial_lambda = 1;  // Initial lambda in Levenberg-Marquardt
+  double lambda_factor = 1;   // Factor by which lambda is multiplied or divided
+                              // each iteration
+  double tolerance = 1e-3;    // Tolerance for stopping criteria
+  bool visualize = false;     // Whether to visualize the map on each iteration
+  bool std_out = true;        // Whether to print to stdout
 };
 
 /**
@@ -54,10 +56,10 @@ struct OptimizationArgs {
  *         - Column 5: Derivative with respect to rotation around the z-axis
  * (psi).
  */
-Eigen::Matrix<double, 3, 6>
-compute_transformation_derivative_3d(const Eigen::Vector3d &p,
-                                     const double theta, const double phi,
-                                     const double psi);
+Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d(const Eigen::Vector3d &p,
+                                                                 const double theta,
+                                                                 const double phi,
+                                                                 const double psi);
 
 /**
  * @brief Computes the derivative of a 2D transformation.
@@ -70,9 +72,8 @@ compute_transformation_derivative_3d(const Eigen::Vector3d &p,
  *         - Column 1: Derivative with respect to y translation
  *         - Column 2: Derivative with respect to rotation (theta)
  */
-Eigen::Matrix<double, 2, 3>
-compute_transformation_derivative_2d(const Eigen::Vector2d &p,
-                                     const double theta);
+Eigen::Matrix<double, 2, 3> compute_transformation_derivative_2d(const Eigen::Vector2d &p,
+                                                                 const double theta);
 
 /**
  * @brief Compute the derivative of a 3D rotation matrix w.r.t. yaw (theta).
@@ -83,8 +84,7 @@ compute_transformation_derivative_2d(const Eigen::Vector2d &p,
  * @param psi
  * @return Eigen::Matrix3d
  */
-Eigen::Matrix3d dR_dtheta(const double theta, const double phi,
-                          const double psi);
+Eigen::Matrix3d dR_dtheta(const double theta, const double phi, const double psi);
 
 /**
  * @brief Compute the derivative of a 3D rotation matrix w.r.t. pitch (phi).
@@ -120,7 +120,8 @@ Eigen::Matrix3d dR_dpsi(const double theta, const double phi, const double psi);
  * @param state The state object to be flattened.
  * @return A flattened Eigen::VectorXd representing the state.
  */
-template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
+template <int Dim>
+Eigen::VectorXd flatten(const State<Dim> &state);
 
 /** * @brief Unflattens the given vector into a state object.
  *
@@ -136,10 +137,9 @@ template <int Dim> Eigen::VectorXd flatten(const State<Dim> &state);
  * @return An unflattened State object.
  */
 template <int Dim>
-State<Dim>
-unflatten(const Eigen::VectorXd &flattened_state,
-          const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame,
-          const MapArgs<Dim> &map_args);
+State<Dim> unflatten(const Eigen::VectorXd &flattened_state,
+                     const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame,
+                     const MapArgs<Dim> &map_args);
 
 template <int Dim>
 int map_index_to_flattened_index(const std::array<int, Dim> &num_points,
@@ -156,9 +156,8 @@ int map_index_to_flattened_index(const std::array<int, Dim> &num_points,
  * @return An array of interpolation points.
  */
 template <int Dim>
-std::array<typename Map<Dim>::index_t, (1 << Dim)>
-get_interpolation_point_indices(const Eigen::Matrix<double, Dim, 1> &p,
-                                const Map<Dim> &map);
+std::array<typename Map<Dim>::index_t, (1 << Dim)> get_interpolation_point_indices(
+    const Eigen::Matrix<double, Dim, 1> &p, const Map<Dim> &map);
 
 /**
  * @brief Computes the interpolation weights for a given point in a map.
@@ -173,9 +172,8 @@ get_interpolation_point_indices(const Eigen::Matrix<double, Dim, 1> &p,
  * @return An Eigen::Matrix of size `Dim` containing the interpolation weights.
  */
 template <int Dim>
-Eigen::Matrix<double, (1 << Dim), 1>
-get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
-                          const Map<Dim> &map);
+Eigen::Matrix<double, (1 << Dim), 1> get_interpolation_weights(
+    const Eigen::Matrix<double, Dim, 1> &p, const Map<Dim> &map);
 
 /** @brief Computes the interpolation values for a given point in a map.
  *
@@ -192,10 +190,8 @@ get_interpolation_weights(const Eigen::Matrix<double, Dim, 1> &p,
  *         - A vector of weights corresponding to each corner.
  */
 template <int Dim>
-std::pair<std::array<typename Map<Dim>::index_t, (1 << Dim)>,
-          Eigen::Matrix<double, (1 << Dim), 1>>
-get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
-                         const Map<Dim> &map);
+std::pair<std::array<typename Map<Dim>::index_t, (1 << Dim)>, Eigen::Matrix<double, (1 << Dim), 1>>
+get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p, const Map<Dim> &map);
 
 /**
  * @brief Generates a set of points in global frame and their corresponding
@@ -216,19 +212,18 @@ get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p,
  * (Eigen::Matrix) and its corresponding desired value (double).
  */
 template <int Dim>
-std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
-generate_points_and_desired_values(
+std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>> generate_points_and_desired_values(
     const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+    const std::vector<
+        pcl::PointCloud<typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
     const ObjectiveArgs &objective_args);
 
 template <int Dim>
 Eigen::VectorXd compute_residuals(
     const State<Dim> &state,
-    const std::vector<pcl::PointCloud<
-        typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+    const std::vector<
+        pcl::PointCloud<typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
     const ObjectiveArgs &objective_args);
 
@@ -242,9 +237,8 @@ Eigen::VectorXd compute_residuals(
  * @return dDF_dPoint
  */
 template <int Dim>
-Eigen::Matrix<double, Dim, 1>
-compute_analytical_derivative(const Map<Dim> &map,
-                              const Eigen::Matrix<double, Dim, 1> &point);
+Eigen::Matrix<double, Dim, 1> compute_analytical_derivative(
+    const Map<Dim> &map, const Eigen::Matrix<double, Dim, 1> &point);
 
 /**
  * @brief Approximate the derivative with respect to the point by interpolating
@@ -256,9 +250,8 @@ compute_analytical_derivative(const Map<Dim> &map,
  * @return dDF_dPoint
  */
 template <int Dim>
-Eigen::Matrix<double, Dim, 1>
-compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
-                               const Eigen::Matrix<double, Dim, 1> &point);
+Eigen::Matrix<double, Dim, 1> compute_approximate_derivative(
+    const std::array<Map<Dim>, Dim> &derivatives, const Eigen::Matrix<double, Dim, 1> &point);
 
 /**
  * @brief Computes the derivative of a transformation matrix with respect to a
@@ -270,11 +263,9 @@ compute_approximate_derivative(const std::array<Map<Dim>, Dim> &derivatives,
  * @param numerical If true, the derivative is computed numerically.
  */
 template <int Dim>
-Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)>
-compute_transformation_derivative(
+Eigen::Matrix<double, Dim, Dim + (Dim == 3 ? 3 : 1)> compute_transformation_derivative(
     const Eigen::Matrix<double, Dim, 1> &point,
-    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
-    const bool numerical = false);
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform, const bool numerical = false);
 
 /**
  * @brief Computes how the residual changes with respect to the transformation.
@@ -287,21 +278,17 @@ compute_transformation_derivative(
  */
 template <int Dim>
 Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> compute_dResidual_dTransform(
-    const std::array<Map<Dim>, Dim> &map_derivatives,
-    const Eigen::Matrix<double, Dim, 1> &point,
-    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
-    const bool numerical = false);
+    const std::array<Map<Dim>, Dim> &map_derivatives, const Eigen::Matrix<double, Dim, 1> &point,
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform, const bool numerical = false);
 
 template <int Dim>
-Eigen::Matrix<double, Dim, 1>
-compute_dGrad_dNeighbour(const typename Map<Dim>::index_t &index,
-                         const typename Map<Dim>::index_t &neighbour,
-                         const std::array<double, Dim> &grid_size,
-                         const std::array<int, Dim> &num_points);
+Eigen::Matrix<double, Dim, 1> compute_dGrad_dNeighbour(const typename Map<Dim>::index_t &index,
+                                                       const typename Map<Dim>::index_t &neighbour,
+                                                       const std::array<double, Dim> &grid_size,
+                                                       const std::array<int, Dim> &num_points);
 
 template <int Dim>
-std::vector<double>
-compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives);
+std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives);
 
 /**
  * @brief Computes the derivative of a 3D transformation.
@@ -324,9 +311,10 @@ compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives);
  *         - Column 5: Derivative with respect to rotation around the z-axis
  * (psi).
  */
-Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(
-    const Eigen::Vector3d &p, const double theta, const double phi,
-    const double psi);
+Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(const Eigen::Vector3d &p,
+                                                                           const double theta,
+                                                                           const double phi,
+                                                                           const double psi);
 
 /**
  * @brief Computes the derivative of a 2D transformation.
@@ -340,13 +328,11 @@ Eigen::Matrix<double, 3, 6> compute_transformation_derivative_3d_numerical(
  *         - Column 1: Derivative with respect to y translation
  *         - Column 2: Derivative with respect to rotation (theta)
  */
-Eigen::Matrix<double, 2, 3>
-compute_transformation_derivative_2d_numerical(const Eigen::Vector2d &p,
-                                               const double theta);
+Eigen::Matrix<double, 2, 3> compute_transformation_derivative_2d_numerical(const Eigen::Vector2d &p,
+                                                                           const double theta);
 
 template <int Dim>
 Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)>
 compute_derivative_map_value_wrt_transformation_numerical(
     const State<Dim> &state, const Eigen::Matrix<double, Dim, 1> &point,
-    const Eigen::Transform<double, Dim, Eigen::Affine> &transform,
-    const double epsilon = 1e-8);
+    const Eigen::Transform<double, Dim, Eigen::Affine> &transform, const double epsilon = 1e-8);
