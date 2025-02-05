@@ -296,13 +296,47 @@ std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map
  * This function calculates the normals for a 2D point cloud using a specified radius for the
  * search.
  *
- * @param cloud2d A pointer to the input point cloud of type pcl::PointCloud<pcl::PointXY>.
- * @param radiusSearch The radius used for the nearest neighbor search.
+ * @param cloud A pointer to the input point cloud
+ * @param search_radius The radius used for the nearest neighbor search.
  *
  * @return A pointer to the computed normals of type pcl::PointCloud<pcl::Normal>.
  */
 pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
-    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud2d, double radiusSearch = 0.2);
+    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud, double search_radius = 0.2);
+
+/**
+ * @brief Computes the normals of a 3D point cloud.
+ *
+ * This function takes a 3D point cloud and computes the normals for each point
+ * in the cloud using a specified radius for the neighborhood search.
+ *
+ * @param cloud A pointer to the input point cloud
+ * @param search_radius The radius used for the neighborhood search to compute the normals.
+ * @return A pointer to the point cloud containing the computed normals
+ * (pcl::PointCloud<pcl::Normal>).
+ */
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals_3d(
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, const double search_radius = 0.2);
+
+template <int Dim>
+using PointType = typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
+
+/**
+ * @brief Computes the normals of a point cloud.
+ *
+ * This function calculates the normals for each point in the given point cloud
+ * using a specified radius for the neighborhood search.
+ *
+ * @tparam Dim The dimension of the point type.
+ * @param cloud A pointer to the input point cloud.
+ * @param search_radius The radius used for the neighborhood search.
+ * @return pcl::PointCloud<pcl::Normal>::Ptr A pointer to the point cloud containing the computed
+ * normals.
+ */
+template <int Dim>
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals(
+    const typename pcl::PointCloud<PointType<Dim>>::Ptr &cloud, const double search_radius = 0.2);
+
 /**
  * @brief Computes the derivative of a 3D transformation.
  * Assumes R = Rz(psi) * Ry(phi) * Rx(theta)

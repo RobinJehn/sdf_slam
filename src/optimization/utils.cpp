@@ -1,7 +1,11 @@
 #include "utils.hpp"
 
 #include <pcl/common/transforms.h>
+#include <pcl/features/normal_3d.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 
 #include <Eigen/Dense>
@@ -769,10 +773,10 @@ std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map
 }
 
 pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
-    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud2d, const double radiusSearch) {
+    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud, const double search_radius) {
   // Convert the 2D cloud to a 3D cloud (with z = 0)
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud3d(new pcl::PointCloud<pcl::PointXYZ>);
-  for (const auto &pt : cloud2d->points) {
+  for (const auto &pt : cloud->points) {
     pcl::PointXYZ pt3d;
     pt3d.x = pt.x;
     pt3d.y = pt.y;
@@ -793,10 +797,44 @@ pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
   Normal2dEstimation norm_estim;
   norm_estim.setInputCloud(cloud3d);
   norm_estim.setSearchMethod(tree);
-  norm_estim.setRadiusSearch(radiusSearch);  // Adjust the search radius as needed
+  norm_estim.setRadiusSearch(search_radius);
   norm_estim.compute(norm_cloud);
 
   return norm_cloud;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals_3d(
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, const double search_radius) {
+  // Create a container for the computed normals.
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+
+  // Create a KD-Tree for the 3D points.
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+  tree->setInputCloud(cloud);
+
+  // Set up the normal estimation object.
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+  ne.setInputCloud(cloud);
+  ne.setSearchMethod(tree);
+  ne.setRadiusSearch(search_radius);
+
+  // Compute the normals.
+  ne.compute(*normals);
+
+  return normals;
+}
+
+template <int Dim>
+using PointType = typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
+
+template <int Dim>
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals(
+    const typename pcl::PointCloud<PointType<Dim>>::Ptr &cloud, const double search_radius) {
+  if constexpr (Dim == 2) {
+    return compute_normals_2d(cloud, search_radius);
+  } else {
+    return compute_normals_3d(cloud, search_radius);
+  }
 }
 
 // Explicit template instantiation
@@ -880,3 +918,8 @@ template std::vector<double> compute_dRoughness_dMap<2>(
     const std::array<Map<2>, 2> &map_derivatives);
 template std::vector<double> compute_dRoughness_dMap<3>(
     const std::array<Map<3>, 3> &map_derivatives);
+
+template pcl::PointCloud<pcl::Normal>::Ptr compute_normals<2>(
+    const typename pcl::PointCloud<PointType<2>>::Ptr &cloud, const double radiusSearch);
+template pcl::PointCloud<pcl::Normal>::Ptr compute_normals<3>(
+    const typename pcl::PointCloud<PointType<3>>::Ptr &cloud, const double radiusSearch);
