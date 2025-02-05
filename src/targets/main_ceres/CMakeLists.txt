@@ -33,6 +33,7 @@ target_link_libraries(sdf_slam_ceres
     ${OpenCV_LIBS}
     Ceres::ceres
     glog::glog
+    pcl_norm_2d
 )
 
 # Set target properties

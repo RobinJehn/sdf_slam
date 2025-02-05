@@ -32,6 +32,7 @@ target_link_libraries(sdf_slam_eigen
     ${PCL_LIBRARIES}
     Eigen3::Eigen
     ${OpenCV_LIBS}
+    pcl_norm_2d
 )
 
 # Set target properties

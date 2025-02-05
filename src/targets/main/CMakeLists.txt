@@ -37,6 +37,7 @@ target_link_libraries(sdf_slam
     SuiteSparse::CHOLMOD
     SuiteSparse::SPQR
     yaml-cpp
+    pcl_norm_2d
 )
 
 # Set target properties

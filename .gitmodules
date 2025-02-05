@@ -1,0 +1,3 @@
+[submodule "deps/PCL-Normal-Estimation-2d"]
+	path = deps/PCL-Normal-Estimation-2d
+	url = https://github.com/RobinJehn/PCL-Normal-Estimation-2d.git
