@@ -2,6 +2,7 @@
 
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/search/kdtree.h>
 
 #include <Eigen/Dense>
 #include <array>
@@ -9,6 +10,7 @@
 #include <numeric>
 #include <vector>
 
+#include "Normal2dEstimation.h"
 #include "map/map.hpp"
 #include "state/state.hpp"
 
@@ -764,6 +766,37 @@ std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map
   }
 
   return dRoughness_dMap;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
+    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud2d, const double radiusSearch) {
+  // Convert the 2D cloud to a 3D cloud (with z = 0)
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud3d(new pcl::PointCloud<pcl::PointXYZ>);
+  for (const auto &pt : cloud2d->points) {
+    pcl::PointXYZ pt3d;
+    pt3d.x = pt.x;
+    pt3d.y = pt.y;
+    pt3d.z = 0;  // 2D data: z is set to zero
+    cloud3d->points.push_back(pt3d);
+  }
+  cloud3d->width = static_cast<uint32_t>(cloud3d->points.size());
+  cloud3d->height = 1;
+  cloud3d->is_dense = true;
+
+  // Create a container for the computed normals.
+  pcl::PointCloud<pcl::Normal>::Ptr norm_cloud(new pcl::PointCloud<pcl::Normal>);
+
+  // Create a KdTree for the 3D points using the concrete search implementation.
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+
+  // Create an instance of Normal2dEstimation and compute normals.
+  Normal2dEstimation norm_estim;
+  norm_estim.setInputCloud(cloud3d);
+  norm_estim.setSearchMethod(tree);
+  norm_estim.setRadiusSearch(radiusSearch);  // Adjust the search radius as needed
+  norm_estim.compute(norm_cloud);
+
+  return norm_cloud;
 }
 
 // Explicit template instantiation

@@ -291,6 +291,19 @@ template <int Dim>
 std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives);
 
 /**
+ * @brief Computes 2D normals for a given point cloud.
+ *
+ * This function calculates the normals for a 2D point cloud using a specified radius for the
+ * search.
+ *
+ * @param cloud2d A pointer to the input point cloud of type pcl::PointCloud<pcl::PointXY>.
+ * @param radiusSearch The radius used for the nearest neighbor search.
+ *
+ * @return A pointer to the computed normals of type pcl::PointCloud<pcl::Normal>.
+ */
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
+    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud2d, double radiusSearch = 0.2);
+/**
  * @brief Computes the derivative of a 3D transformation.
  * Assumes R = Rz(psi) * Ry(phi) * Rx(theta)
  *
