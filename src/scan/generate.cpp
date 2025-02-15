@@ -1,22 +1,24 @@
 #include "generate.hpp"
-#include "map/map.hpp"
+
+#include <pcl/common/transforms.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
 #include <functional>
 #include <iostream>
-#include <pcl/common/transforms.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <random>
 #include <stdexcept>
 #include <vector>
 
+#include "map/map.hpp"
+
 // Function to compute sin(x)
 double f(double x) { return std::sin(x); }
 
-double bisection(std::function<double(double)> func, double a, double b,
-                 double tol, int max_iter) {
+double bisection(std::function<double(double)> func, double a, double b, double tol, int max_iter) {
   double fa = func(a);
   double fb = func(b);
   if (fa * fb > 0) {
@@ -44,9 +46,7 @@ Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta) {
   double x0 = initial_point.x();
   double y0 = initial_point.y();
 
-  auto laser_path = [x0, y0, theta](double x) {
-    return y0 + std::tan(theta) * (x - x0);
-  };
+  auto laser_path = [x0, y0, theta](double x) { return y0 + std::tan(theta) * (x - x0); };
 
   auto intersection = [laser_path](double x) { return f(x) - laser_path(x); };
 
@@ -66,19 +66,17 @@ Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta) {
     }
   }
 
-  return Eigen::Vector2d(x0 + max_steps * step,
-                         laser_path(x0 + max_steps * step));
+  return Eigen::Vector2d(x0 + max_steps * step, laser_path(x0 + max_steps * step));
 }
 
-pcl::PointCloud<pcl::PointXY>
-create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
-            const double angle_range, const int num_points) {
+pcl::PointCloud<pcl::PointXY> create_scan(const Eigen::Vector2d &scanner_position,
+                                          const double theta_scanner, const double angle_range,
+                                          const int num_points) {
   pcl::PointCloud<pcl::PointXY> scan;
 
   scan.points.reserve(num_points);
   for (int i = 0; i < num_points; ++i) {
-    double angle =
-        theta_scanner - angle_range / 2 + i * angle_range / (num_points - 1);
+    double angle = theta_scanner - angle_range / 2 + i * angle_range / (num_points - 1);
     Eigen::Vector2d point = hits_f(scanner_position, angle);
     pcl::PointXY pcl_point;
     pcl_point.x = point.x();
@@ -90,28 +88,23 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
   scan.height = 1;
 
   // Transform the scan into the scanner frame
-  Eigen::Translation<double, 2> translation(scanner_position.x(),
-                                            scanner_position.y());
+  Eigen::Translation<double, 2> translation(scanner_position.x(), scanner_position.y());
   Eigen::Rotation2Dd rotation(theta_scanner);
   Eigen::Transform<double, 2, Eigen::Affine> transform = translation * rotation;
 
-  pcl::transformPointCloud(scan, scan,
-                           transform.inverse().template cast<float>());
+  pcl::transformPointCloud(scan, scan, transform.inverse().template cast<float>());
 
   return scan;
 }
 
 // Function to create two scans
 
-std::vector<pcl::PointCloud<pcl::PointXY>>
-create_scans(const std::vector<Eigen::Vector2d> &scanner_positions,
-             const std::vector<double> &thetas, const int num_points,
-             const double angle_range) {
-
+std::vector<pcl::PointCloud<pcl::PointXY>> create_scans(
+    const std::vector<Eigen::Vector2d> &scanner_positions, const std::vector<double> &thetas,
+    const int num_points, const double angle_range) {
   std::vector<pcl::PointCloud<pcl::PointXY>> scans;
   for (int i = 0; i < scanner_positions.size(); ++i) {
-    scans.push_back(
-        create_scan(scanner_positions[i], thetas[i], angle_range, num_points));
+    scans.push_back(create_scan(scanner_positions[i], thetas[i], angle_range, num_points));
   }
 
   return scans;
@@ -125,8 +118,7 @@ double derivative(double x, double x0, double y0) {
   return 2.0 * (x - x0) + 2.0 * (std::sin(x) - y0) * std::cos(x);
 }
 
-double find_closest_point(const double x, const double y,
-                          const double x_initial) {
+double find_closest_point(const double x, const double y, const double x_initial) {
   // We'll use the bisection method to find the root of the derivative
   double x_min = x - M_PI;
   double x_max = x + M_PI;
@@ -157,7 +149,8 @@ double find_closest_point(const double x, const double y,
   return x_initial;
 }
 
-Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth) {
+Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth,
+                const double initial_value) {
   Map<2> map(map_args);
 
   if (from_ground_truth) {
@@ -183,6 +176,13 @@ Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth) {
         const double sign = (y_optimal - y_val) >= 0 ? 1.0 : -1.0;
 
         map.set_value_at({i, j}, sign * dist);
+      }
+    }
+  } else {
+    const double value = initial_value;
+    for (int i = 0; i < map_args.num_points[0]; ++i) {
+      for (int j = 0; j < map_args.num_points[1]; ++j) {
+        map.set_value_at({i, j}, value);
       }
     }
   }

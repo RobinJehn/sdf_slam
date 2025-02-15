@@ -1,23 +1,25 @@
 #pragma once
 
-#include "map/map.hpp"
-#include "map/utils.hpp"
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
 #include <functional>
 #include <iostream>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <random>
 #include <vector>
+
+#include "map/map.hpp"
+#include "map/utils.hpp"
 
 // Function to compute sin(x)
 double f(double x);
 
 // Function to perform bisection method to find root
-double bisection(std::function<double(double)> func, double a, double b,
-                 double tol = 1e-6, int max_iter = 100);
+double bisection(std::function<double(double)> func, double a, double b, double tol = 1e-6,
+                 int max_iter = 100);
 
 // Function to find intersection points of a line with f(x) = sin(x)
 Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta);
@@ -37,9 +39,9 @@ Eigen::Vector2d hits_f(const Eigen::Vector2d &initial_point, double theta);
  *
  * @return A pointer to the generated point cloud.
  */
-pcl::PointCloud<pcl::PointXY>
-create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
-            const double angle_range, const int num_points);
+pcl::PointCloud<pcl::PointXY> create_scan(const Eigen::Vector2d &scanner_position,
+                                          const double theta_scanner, const double angle_range,
+                                          const int num_points);
 
 /**
  * @brief Create simultated scans
@@ -53,10 +55,9 @@ create_scan(const Eigen::Vector2d &scanner_position, const double theta_scanner,
  *
  * @return Point clouds
  */
-std::vector<pcl::PointCloud<pcl::PointXY>>
-create_scans(const std::vector<Eigen::Vector2d> &scanner_positions,
-             const std::vector<double> &thetas, const int num_points = 100,
-             const double angle_range = M_PI / 4);
+std::vector<pcl::PointCloud<pcl::PointXY>> create_scans(
+    const std::vector<Eigen::Vector2d> &scanner_positions, const std::vector<double> &thetas,
+    const int num_points = 100, const double angle_range = M_PI / 4);
 
 /**
  * @brief Initializes a map with specified dimensions and resolution.
@@ -69,10 +70,12 @@ create_scans(const std::vector<Eigen::Vector2d> &scanner_positions,
  * @param map_args Arguments for initializing the map.
  * @param from_ground_truth A boolean flag indicating whether to initialize
  *                          the map from ground truth data.
+ * @param initial_value The initial value to set for each cell in the map.
  *
  * @return The initialized map.
  */
-Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth);
+Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth,
+                const double initial_value = 0);
 
 /**
  * @brief Find the closest point to (x, y) that is on the sin curve
@@ -84,8 +87,7 @@ Map<2> init_map(const MapArgs<2> &map_args, const bool from_ground_truth);
  *
  * @return optimal x value
  */
-double find_closest_point(const double x, const double y,
-                          const double x_initial);
+double find_closest_point(const double x, const double y, const double x_initial);
 
 /** @brief Distance between (x0, y0) and (x, f(x)) squared */
 double distance_squared(double x, double x0, double y0);

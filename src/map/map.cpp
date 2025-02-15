@@ -109,6 +109,16 @@ void Map<Dim>::set_value_at(const index_t &index, const double value) {
 }
 
 template <int Dim>
+Map<Dim>::Vector Map<Dim>::get_location(const index_t &index) const {
+  if constexpr (Dim == 2) {
+    return Vector(index[0] * d_[0] + min_coords_.x(), index[1] * d_[1] + min_coords_.y());
+  } else if constexpr (Dim == 3) {
+    return Vector(index[0] * d_[0] + min_coords_.x(), index[1] * d_[1] + min_coords_.y(),
+                  index[2] * d_[2] + min_coords_.z());
+  }
+}
+
+template <int Dim>
 double Map<Dim>::value(const Vector &p) const {
   const auto grid_indices = get_grid_indices(p);
 
@@ -277,7 +287,7 @@ static std::array<double, 2> upwind_difference_2d(const Map<2> &map, const Map<2
       index_higher[dim] += 1;
       const double value_higher_index = map.get_value_at(index_higher);
 
-      if (std::abs(value_higher_index - own_value) < std::abs(own_value - value_lower_index)) {
+      if (std::abs(value_higher_index) < std::abs(value_lower_index)) {
         gradient[dim] = (value_higher_index - own_value) / map.get_d(dim);
       } else {
         gradient[dim] = (own_value - value_lower_index) / map.get_d(dim);

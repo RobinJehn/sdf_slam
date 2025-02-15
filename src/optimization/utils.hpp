@@ -2,6 +2,7 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/search/kdtree.h>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -208,8 +209,9 @@ get_interpolation_values(const Eigen::Matrix<double, Dim, 1> &p, const Map<Dim> 
  * @param both_directions A boolean flag indicating whether to generate points
  *                        in both directions.
  * @param step_size The step size used for generating points.
- * @return A vector of pairs, where each pair consists of a point
- * (Eigen::Matrix) and its corresponding desired value (double).
+ *
+ * @return A vector of pairs, where each pair consists of a global point and its corresponding
+ * desired value (double).
  */
 template <int Dim>
 std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>> generate_points_and_desired_values(
@@ -218,6 +220,17 @@ std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>> generate_points_an
         pcl::PointCloud<typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
         &point_clouds,
     const ObjectiveArgs &objective_args);
+
+/**
+ * @brief Converts a 2D point cloud to a 3D point cloud.
+ *
+ * This function takes a point cloud with 2D points (pcl::PointXY) and converts it to a point cloud
+ * with 3D points (pcl::PointXYZ). The z-coordinate of the resulting 3D points will be set to zero.
+ *
+ * @param cloud_2d A pointer to the input point cloud containing 2D points.
+ * @return A pointer to the output point cloud containing 3D points.
+ */
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d_to_3d(pcl::PointCloud<pcl::PointXY>::Ptr cloud_2d);
 
 template <int Dim>
 Eigen::VectorXd compute_residuals(
@@ -287,6 +300,40 @@ Eigen::Matrix<double, Dim, 1> compute_dGrad_dNeighbour(const typename Map<Dim>::
                                                        const std::array<double, Dim> &grid_size,
                                                        const std::array<int, Dim> &num_points);
 
+/**
+ * @brief Fills the smoothness derivative map for a 2D map.
+ *
+ * This function computes the smoothness derivative for a given 2D map and fills
+ * the provided triplet list with the results. The smoothness factor is used to
+ * control the influence of smoothness in the optimization process.
+ *
+ * @param map The 2D map for which the smoothness derivative is to be computed.
+ * @param smoothness_factor A factor that controls the influence of smoothness.
+ * @param tree_global A KdTree used for nearest neighbor search in the global frame.
+ * @param normals_global A point cloud containing the normals in the global frame.
+ * @param triplet_list A list of Eigen triplets to be filled with the smoothness derivative values.
+ * @param residual_index_offset The offset to be added to the residual index.
+ */
+void fill_dSmoothness_dMap_2d(const Map<2> &map, const double smoothness_factor,
+                              pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
+                              const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
+                              std::vector<Eigen::Triplet<double>> &triplet_list,
+                              const int residual_index_offset);
+
+/**
+ * @brief Computes the derivative of roughness with respect to the map.
+ *
+ * This function calculates the gradient of the roughness metric with respect to the map
+ * derivatives provided. The roughness metric is a measure of the variability or
+ * irregularity in the map data.
+ *
+ * @tparam Dim The dimension of the map (e.g., 2 for 2D maps, 3 for 3D maps).
+ * @param map_derivatives An array containing the derivatives of the map. Each element
+ *                        in the array is a Map object representing the derivative of
+ *                        the map with respect to one of the dimensions.
+ * @return A vector of doubles representing the computed derivatives of the roughness
+ *         with respect to the map.
+ */
 template <int Dim>
 std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map_derivatives);
 
@@ -383,3 +430,36 @@ Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)>
 compute_derivative_map_value_wrt_transformation_numerical(
     const State<Dim> &state, const Eigen::Matrix<double, Dim, 1> &point,
     const Eigen::Transform<double, Dim, Eigen::Affine> &transform, const double epsilon = 1e-8);
+
+/**
+ * @brief Template for utility functions or classes that operate on a specified dimension.
+ *
+ * @tparam Dim The dimension of the space in which the utility functions or classes operate.
+ */
+template <int Dim>
+typename pcl::PointCloud<PointType<Dim>>::Ptr combine_scans(
+    const std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> &scans);
+
+/**
+ * @brief Transforms a set of local point clouds to the global coordinate system.
+ *
+ * This function takes a vector of transformations and a vector of point clouds,
+ * and applies each transformation to the corresponding point cloud to convert
+ * it from the local coordinate system to the global coordinate system.
+ *
+ * @tparam Dim The dimension of the point clouds and transformations (e.g., 2 for 2D, 3 for 3D).
+ *
+ * @param transformations A vector of Eigen::Transform objects representing the transformations
+ *                        from local to global coordinates. The size of this vector should match
+ *                        the size of the scans vector.
+ * @param scans A vector of pointers to pcl::PointCloud objects representing the local point clouds.
+ *              Each point cloud will be transformed to the global coordinate system using the
+ *              corresponding transformation from the transformations vector.
+ *
+ * @return A vector of pointers to pcl::PointCloud objects representing the point clouds in the
+ *         global coordinate system.
+ */
+template <int Dim>
+std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> local_to_global(
+    const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> transformations,
+    const std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> &scans);

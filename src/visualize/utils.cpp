@@ -1,14 +1,14 @@
 #include "utils.hpp"
-#include "optimization/utils.hpp"
+
 #include <thread>
+
+#include "optimization/utils.hpp"
 
 template <int Dim>
 void plotPointsWithValuesPCL(
-    const std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>>
-        &points_with_values) {
+    const std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>> &points_with_values) {
   // Create a PCL point cloud of type pcl::PointXYZRGB
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
-      new pcl::PointCloud<pcl::PointXYZRGB>());
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
 
   // Find min and max values for color scaling
   double min_value = std::numeric_limits<double>::max();
@@ -24,14 +24,13 @@ void plotPointsWithValuesPCL(
     double value = point_value.second;
 
     // Scale the value to a range between 0 and 255 for color intensity
-    int intensity =
-        static_cast<int>(255 * (value - min_value) / (max_value - min_value));
+    int intensity = static_cast<int>(255 * (value - min_value) / (max_value - min_value));
 
     // Create a PCL point with RGB color based on the intensity
     pcl::PointXYZRGB pcl_point;
     pcl_point.x = point(0);
     pcl_point.y = point(1);
-    pcl_point.z = (Dim == 3) ? point(2) : 0; // Set z=0 for 2D points
+    pcl_point.z = (Dim == 3) ? point(2) : 0;  // Set z=0 for 2D points
 
     // Set the color (using a blue shade here, adjust RGB channels as needed)
     pcl_point.r = intensity;
@@ -49,8 +48,8 @@ void plotPointsWithValuesPCL(
   viewer->addPointCloud<pcl::PointXYZRGB>(cloud, "cloud");
 
   // Set point size and add a coordinate system
-  viewer->setPointCloudRenderingProperties(
-      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "cloud");
+  viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2,
+                                           "cloud");
   viewer->addCoordinateSystem(1.0);
   viewer->initCameraParameters();
 
@@ -61,24 +60,27 @@ void plotPointsWithValuesPCL(
   }
 }
 
-cv::Mat mapToImage(const Eigen::MatrixXd &map, int output_width,
-                   int output_height) {
+cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_height) {
   cv::Mat map_image(output_height, output_width, CV_8UC1);
   const double min_value = map.minCoeff();
   const double max_value = map.maxCoeff();
-  const int map_points_x = map.rows();
-  const int map_points_y = map.cols();
+  const int map_points_x = map.cols();
+  const int map_points_y = map.rows();
 
   // Fill map_image by sampling and scaling map data
-  for (int i = 0; i < output_height; ++i) {
-    for (int j = 0; j < output_width; ++j) {
-      const int map_i = static_cast<int>(i * map_points_x /
-                                         static_cast<double>(output_height));
-      const int map_j = static_cast<int>(j * map_points_y /
-                                         static_cast<double>(output_width));
-      const double value = map(map_i, map_j);
-      map_image.at<uchar>(i, j) = static_cast<uchar>(255 * (value - min_value) /
-                                                     (max_value - min_value));
+  for (int idx_x = 0; idx_x < output_width; ++idx_x) {
+    for (int idx_y = 0; idx_y < output_height; ++idx_y) {
+      const int map_idx_x =
+          static_cast<int>(idx_x * map_points_x / static_cast<double>(output_width));
+
+      // In the image the origin is in the top left, while in the map it is in the bottom left
+      const int map_idx_y = static_cast<int>((output_height - idx_y - 1) * map_points_y /
+                                             static_cast<double>(output_height));
+      // (row, col)
+      const double value = map(map_idx_y, map_idx_x);
+      // .at(row, col)
+      map_image.at<uchar>(idx_y, idx_x) =
+          static_cast<uchar>(255 * (value - min_value) / (max_value - min_value));
     }
   }
 
@@ -89,8 +91,7 @@ cv::Mat mapToImage(const Eigen::MatrixXd &map, int output_width,
 }
 
 void overlayPoints(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
-                   const Eigen::Vector2d &min_coords,
-                   const Eigen::Vector2d &max_coords,
+                   const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
                    const Eigen::Vector2d &scale) {
   for (const auto &point : points) {
     const Eigen::Vector2d map_point = (point - min_coords).cwiseProduct(scale);
@@ -102,29 +103,55 @@ void overlayPoints(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
   }
 }
 
-void displayMapWithPoints(const Eigen::MatrixXd &map,
-                          const std::vector<Eigen::Vector2d> &points,
-                          const Eigen::Vector2d &min_coords,
-                          const Eigen::Vector2d &max_coords,
+struct CallbackData {
+  Eigen::MatrixXd map;
+  const int output_width;
+  const int output_height;
+};
+
+// Mouse callback function
+void onMouse(int event, int x, int y, int flags, void *userdata) {
+  CallbackData *data = reinterpret_cast<CallbackData *>(userdata);
+
+  if (event == cv::EVENT_LBUTTONDOWN) {  // || event == cv::EVENT_MOUSEMOVE
+    Eigen::MatrixXd map = data->map;
+
+    const int map_index_x =
+        static_cast<int>(map.cols() * x / static_cast<double>(data->output_width));
+
+    // In the image the origin is in the top left, while in the map it is in the bottom left
+    const int map_index_y =
+        map.rows() - static_cast<int>(map.rows() * y / static_cast<double>(data->output_height)) -
+        1;
+
+    // Print the pixel and map coordinates to the console.
+    std::cout << "Pixel (" << x << ", " << y << "), Map (" << map_index_x << ", " << map_index_y
+              << "): " << map(map_index_y, map_index_x) << std::endl;
+  }
+}
+
+void displayMapWithPoints(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> &points,
+                          const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
                           const int output_width, const int output_height) {
-  const Eigen::Vector2d image_size =
-      Eigen::Vector2d(output_width, output_height);
+  const Eigen::Vector2d image_size = Eigen::Vector2d(output_width, output_height);
   const Eigen::Vector2d map_size = max_coords - min_coords;
   const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
 
-  cv::Mat color_map_image = mapToImage(map, output_width, output_height);
+  cv::Mat color_map_image = map_to_image(map, output_width, output_height);
   overlayPoints(color_map_image, points, min_coords, max_coords, scale);
 
+  CallbackData data = {map, output_width, output_height};
+  cv::setMouseCallback("Map with Points", onMouse, &data);
   cv::imshow("Map with Points", color_map_image);
   cv::waitKey(0);
 }
 
 template <int Dim>
-std::vector<Eigen::Matrix<double, Dim, 1>>
-scan_to_global(const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>>
-                   &transformations,
-               const std::vector<pcl::PointCloud<typename std::conditional<
-                   Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>> &scans) {
+std::vector<Eigen::Matrix<double, Dim, 1>> scan_to_global(
+    const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> &transformations,
+    const std::vector<
+        pcl::PointCloud<typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
+        &scans) {
   using Point = Eigen::Matrix<double, Dim, 1>;
 
   std::vector<Point> global_points;
@@ -144,27 +171,25 @@ scan_to_global(const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>>
   return global_points;
 }
 
-void visualizeMap(
-    const Eigen::VectorXd &params,
-    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-    const MapArgs<2> &map_args,
-    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-    const int output_width, const int output_height) {
+void visualizeMap(const Eigen::VectorXd &params,
+                  const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
+                  const MapArgs<2> &map_args,
+                  const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+                  const int output_width, const int output_height) {
   State<2> state = unflatten<2>(params, initial_frame, map_args);
 
-  std::vector<Eigen::Vector2d> global_points =
-      scan_to_global<2>(state.transformations_, scans);
+  std::vector<Eigen::Vector2d> global_points = scan_to_global<2>(state.transformations_, scans);
 
   // Generate and display the map image
   Eigen::MatrixXd map(map_args.num_points[0], map_args.num_points[1]);
-  int index = 0;
   for (int x = 0; x < map_args.num_points[0]; ++x) {
-    for (int y = map_args.num_points[1] - 1; y >= 0; --y) {
-      map(y, x) = std::max(-3.0, std::min(3.0, params(index++)));
+    for (int y = 0; y < map_args.num_points[1]; ++y) {
+      // (row, column) row is y, column is x
+      map(y, x) = std::max(-100.0, std::min(100.0, state.map_.get_value_at({x, y})));
     }
   }
-  displayMapWithPoints(map, global_points, map_args.min_coords,
-                       map_args.max_coords, output_width, output_height);
+  displayMapWithPoints(map, global_points, map_args.min_coords, map_args.max_coords, output_width,
+                       output_height);
 }
 
 // Explicit template instantiation for 2D points
@@ -176,13 +201,11 @@ template void plotPointsWithValuesPCL<3>(
     const std::vector<std::pair<Eigen::Matrix<double, 3, 1>, double>> &);
 
 // Explicit template instantiation for scan_to_global with 2D points
-template std::vector<Eigen::Matrix<double, 2, 1>>
-scan_to_global<2>(const std::vector<Eigen::Transform<double, 2, Eigen::Affine>>
-                      &transformations,
-                  const std::vector<pcl::PointCloud<pcl::PointXY>> &scans);
+template std::vector<Eigen::Matrix<double, 2, 1>> scan_to_global<2>(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans);
 
 // Explicit template instantiation for scan_to_global with 3D points
-template std::vector<Eigen::Matrix<double, 3, 1>>
-scan_to_global<3>(const std::vector<Eigen::Transform<double, 3, Eigen::Affine>>
-                      &transformations,
-                  const std::vector<pcl::PointCloud<pcl::PointXYZ>> &scans);
+template std::vector<Eigen::Matrix<double, 3, 1>> scan_to_global<3>(
+    const std::vector<Eigen::Transform<double, 3, Eigen::Affine>> &transformations,
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &scans);

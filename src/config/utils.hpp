@@ -1,15 +1,18 @@
 #pragma once
-#include "map/utils.hpp"
-#include "optimization/utils.hpp"
 #include <filesystem>
 
+#include "map/utils.hpp"
+#include "optimization/utils.hpp"
+
 struct GeneralArgs {
-  std::filesystem::path data_path; // Path to the data directory with the scans
-  bool from_ground_truth = false;  // Whether to initialize the map from ground
-                                   // truth
+  std::filesystem::path data_path;  // Path to the data directory with the scans
+  bool from_ground_truth = false;   // Whether to initialize the map from ground
+                                    // truth
+  double initial_value = 0.0;       // Initial value for the map
 };
 
-template <int Dim> struct Args {
+template <int Dim>
+struct Args {
   MapArgs<Dim> map_args;
   ObjectiveArgs objective_args;
   OptimizationArgs optimization_args;

@@ -38,9 +38,9 @@ ObjectiveFunctor<Dim>::compute_state_and_derivatives(const Eigen::VectorXd &x) c
 template <int Dim>
 int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobian) const {
   jacobian.setZero(values(), inputs());
-  std::vector<Eigen::Triplet<double>> tripletList = compute_jacobian_triplets(x);
+  std::vector<Eigen::Triplet<double>> triplet_list = compute_jacobian_triplets(x);
 
-  for (const auto &triplet : tripletList) {
+  for (const auto &triplet : triplet_list) {
     jacobian(triplet.row(), triplet.col()) += triplet.value();
   }
   return 0;
@@ -49,7 +49,7 @@ int ObjectiveFunctor<Dim>::df(const Eigen::VectorXd &x, Eigen::MatrixXd &jacobia
 template <int Dim>
 std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_triplets(
     const Eigen::VectorXd &x) const {
-  std::vector<Eigen::Triplet<double>> tripletList;
+  std::vector<Eigen::Triplet<double>> triplet_list;
 
   // Needed variables
   const auto [state, derivatives] = compute_state_and_derivatives(x);
@@ -71,7 +71,7 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
     // dMap
     auto [interpolation_indices, interpolation_weights] =
         get_interpolation_values(point, state.map_);
-    fill_dMap(tripletList, i, residual_factor, interpolation_indices, interpolation_weights);
+    fill_dMap(triplet_list, i, residual_factor, interpolation_indices, interpolation_weights);
 
     // dTransform
     // Transformation 0 is fixed
@@ -84,18 +84,38 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
         derivatives, point, state.transformations_[transformation_index]);
 
     const uint offset = total_map_points + (transformation_index - 1) * n_transformation_params_;
-    fill_dTransform(tripletList, i, residual_factor, offset, dResidual_dTransform);
+    fill_dTransform(triplet_list, i, residual_factor, offset, dResidual_dTransform);
   }
 
   // Smoothness residuals
-  fill_dRoughness_dMap(tripletList, derivatives, objective_args_.smoothness_factor);
+  if constexpr (Dim == 2) {
+    // Global cloud
+    std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_ptrs;
+    for (const auto &cloud : point_clouds_) {
+      pcl::PointCloud<pcl::PointXY>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXY>(cloud));
+      point_clouds_ptrs.push_back(cloud_ptr);
+    }
+    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_global =
+        local_to_global(state.transformations_, point_clouds_ptrs);
+    const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global = combine_scans<2>(point_clouds_global);
+    pcl::search::KdTree<pcl::PointXY>::Ptr tree_global(new pcl::search::KdTree<pcl::PointXY>);
+    tree_global->setInputCloud(cloud_global);
 
-  return tripletList;
+    // Global normals
+    const pcl::PointCloud<pcl::Normal>::Ptr normals_global = compute_normals_2d(cloud_global);
+
+    fill_dSmoothness_dMap_2d(state.map_, objective_args_.smoothness_factor, tree_global,
+                             normals_global, triplet_list, point_value.size());
+  } else {
+    fill_dRoughness_dMap(triplet_list, derivatives, objective_args_.smoothness_factor);
+  }
+
+  return triplet_list;
 }
 
 template <int Dim>
 void ObjectiveFunctor<Dim>::fill_dMap(
-    std::vector<Eigen::Triplet<double>> &tripletList, const uint residual_index,
+    std::vector<Eigen::Triplet<double>> &triplet_list, const uint residual_index,
     const double residual_factor,
     const std::array<typename Map<Dim>::index_t, (1 << Dim)> &interpolation_indices,
     const Eigen::VectorXd &interpolation_weights) const {
@@ -104,36 +124,42 @@ void ObjectiveFunctor<Dim>::fill_dMap(
     const int flattened_index = map_index_to_flattened_index<Dim>(map_args_.num_points, index);
 
     const double dMap = residual_factor * interpolation_weights[j];
-    tripletList.emplace_back(residual_index, flattened_index, dMap);
+    triplet_list.emplace_back(/* residual */ residual_index,  //
+                              /* parameter */ flattened_index,
+                              /* value */ dMap);
   }
 }
 
 template <int Dim>
-void ObjectiveFunctor<Dim>::fill_dRoughness_dMap(std::vector<Eigen::Triplet<double>> &tripletList,
+void ObjectiveFunctor<Dim>::fill_dRoughness_dMap(std::vector<Eigen::Triplet<double>> &triplet_list,
                                                  const std::array<Map<Dim>, Dim> &map_derivatives,
                                                  const double factor) const {
   const std::vector<double> dRoughness_dMap = compute_dRoughness_dMap<Dim>(map_derivatives);
   for (size_t i = 0; i < dRoughness_dMap.size(); ++i) {
-    tripletList.emplace_back(values() - 1, i, factor * dRoughness_dMap[i]);
+    triplet_list.emplace_back(/* residual */ values() - 1,  //
+                              /* parameter */ i,
+                              /* value */ factor * dRoughness_dMap[i]);
   }
 }
 
 template <int Dim>
 void ObjectiveFunctor<Dim>::fill_dTransform(
-    std::vector<Eigen::Triplet<double>> &tripletList, const uint residual_index,
+    std::vector<Eigen::Triplet<double>> &triplet_list, const uint residual_index,
     const double residual_factor, const uint offset,
     const Eigen::Matrix<double, 1, n_transformation_params_> &dTransform) const {
   for (int d = 0; d < n_transformation_params_; ++d) {
-    tripletList.emplace_back(residual_index, offset + d, residual_factor * dTransform(d));
+    triplet_list.emplace_back(/* residual */ residual_index,  //
+                              /* parameter */ offset + d,
+                              /* value */ residual_factor * dTransform(d));
   }
 }
 
 template <int Dim>
 int ObjectiveFunctor<Dim>::sparse_df(const Eigen::VectorXd &x,
                                      Eigen::SparseMatrix<double> &jacobian) const {
-  const std::vector<Eigen::Triplet<double>> tripletList = compute_jacobian_triplets(x);
+  const std::vector<Eigen::Triplet<double>> triplet_list = compute_jacobian_triplets(x);
   jacobian.resize(values(), inputs());
-  jacobian.setFromTriplets(tripletList.begin(), tripletList.end());
+  jacobian.setFromTriplets(triplet_list.begin(), triplet_list.end());
   return 0;
 }
 

@@ -77,6 +77,14 @@ class Map {
   double get_max_value() const;
 
   /**
+   * @brief Get the location of a certain grid point in global frame
+   *
+   * @param index The index of the grid point
+   * @return The location of the grid point in global frame
+   */
+  Vector get_location(const index_t &index) const;
+
+  /**
    * @brief Retrieves the neighboring indices of a given index in the map.
    *
    * Returns 2 * Dim neighbors for a given index in the map. Edges and corners

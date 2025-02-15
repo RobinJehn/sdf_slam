@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <SuiteSparseQR.hpp>
+#include <chrono>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -121,29 +122,69 @@ void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, chol
 
 int main() {
   try {
+    // Setup and read configuration
     Args<2> args = setup_from_yaml<2>("../config/sdf.yml");
-
     Scans scans = read_scans(args.general_args.data_path);
     const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = scans.scans;
 
-    const int num_points = point_clouds[0].size() * point_clouds.size();
-    const int num_residuals = num_points * (args.objective_args.scanline_points + 1) + 1;
+    // // ---- New Block: Convert 2D scan (PointXY) to 3D (PointXYZ) and visualize normals ----
+    // {
+    //   pcl::PointCloud<pcl::PointXY>::Ptr point_cloud_ptr(
+    //       new pcl::PointCloud<pcl::PointXY>(point_clouds[0]));
+    //   pcl::PointCloud<pcl::Normal>::Ptr norm_cloud = compute_normals<2>(point_cloud_ptr, 0.1);
+
+    //   // Convert the 2D cloud to a 3D cloud (with z = 0)
+    //   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud3d(new pcl::PointCloud<pcl::PointXYZ>);
+    //   for (const auto &pt : point_cloud_ptr->points) {
+    //     pcl::PointXYZ pt3d;
+    //     pt3d.x = pt.x;
+    //     pt3d.y = pt.y;
+    //     pt3d.z = 0;  // 2D data: z is set to zero
+    //     cloud3d->points.push_back(pt3d);
+    //   }
+    //   cloud3d->width = static_cast<uint32_t>(cloud3d->points.size());
+    //   cloud3d->height = 1;
+    //   cloud3d->is_dense = true;
+
+    //   // Set up the visualizer.
+    //   pcl::visualization::PCLVisualizer viewer("2D Normal Visualization");
+    //   viewer.setBackgroundColor(0.0, 0.0, 0.0);
+    //   viewer.addPointCloud<pcl::PointXYZ>(cloud3d, "scan");
+    //   // Visualize normals with a step of 1 and a scale factor of 10.0 (adjust as needed)
+    //   viewer.addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(cloud3d, norm_cloud, 1, 1.0,
+    //                                                           "normals");
+    //   viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4,
+    //                                           "scan");
+
+    //   // Main loop for the visualizer.
+    //   while (!viewer.wasStopped()) {
+    //     viewer.spinOnce(100);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //   }
+    // }
 
     // Initialize the map and set up the optimization parameters
-    Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth);
-
+    Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth, args.general_args.initial_value);
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
+
+    // Visualize the initial map
     visualizeMap(params, point_clouds, args.map_args, scans.frames[0]);
+
+    // Set up the objective functor for optimization
+    const int num_points = point_clouds[0].size() * point_clouds.size();
+    const int num_residuals =
+        num_points * (args.objective_args.scanline_points + 1) + map.total_points();
     ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, point_clouds,
                                 args.objective_args, scans.frames[0]);
 
+    // Run the optimization process
     cholmod_common c;
     cholmod_start(&c);
     runOptimization(functor, params, c, point_clouds, args.map_args, scans.frames[0],
                     args.optimization_args);
     cholmod_finish(&c);
 
-    // Visualize the optimized map and transformed point clouds
+    // Visualize the optimized map
     visualizeMap(params, point_clouds, args.map_args, scans.frames[0]);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
