@@ -6,7 +6,7 @@
 
 #include "utils.hpp"
 
-enum class DerivativeType { CENTRAL, UPWIND };
+enum class DerivativeType { CENTRAL, UPWIND, FORWARD };
 
 /**
  * @brief Generic class to represent a map in 2D or 3D. The map is represented
