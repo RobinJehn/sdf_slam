@@ -3,6 +3,8 @@
 #include <Eigen/Dense>
 #include <vector>
 
+#include "derivatives.hpp"
+#include "residuals.hpp"
 #include "state/state.hpp"
 #include "utils.hpp"
 
@@ -105,7 +107,8 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
     const pcl::PointCloud<pcl::Normal>::Ptr normals_global = compute_normals_2d(cloud_global);
 
     fill_dSmoothness_dMap_2d(state.map_, objective_args_.smoothness_factor, tree_global,
-                             normals_global, triplet_list, point_value.size());
+                             normals_global, triplet_list, point_value.size(),
+                             objective_args_.smoothness_derivative_type);
   } else {
     fill_dRoughness_dMap(triplet_list, derivatives, objective_args_.smoothness_factor);
   }

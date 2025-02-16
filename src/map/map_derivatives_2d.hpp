@@ -33,6 +33,15 @@ std::array<double, 2> upwind_difference_2d(const Map<2> &map, const Map<2>::inde
 std::array<double, 2> central_difference_2d(const Map<2> &map, const Map<2>::index_t &index);
 
 /**
+ * @brief Computes the forward difference for a 2D map at a given index.
+ *
+ * @param map The 2D map for which the forward difference is to be computed.
+ * @param index The index within the map at which the forward difference is to be calculated.
+ * @return A std::array containing the forward differences in the x and y directions.
+ */
+std::array<double, 2> forward_difference_2d(const Map<2> &map, const Map<2>::index_t &index);
+
+/**
  * @brief Computes the 2D derivatives of a given map.
  *
  * This function calculates the derivatives of a 2D map based on the specified derivative type.

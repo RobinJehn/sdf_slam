@@ -8,6 +8,7 @@
 
 #include "state/state.hpp"
 #include "utils.hpp"
+#include "residuals.hpp"
 
 // Constructor Implementation for ObjectiveFunctorCeres
 template <int Dim>

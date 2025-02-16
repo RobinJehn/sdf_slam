@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+#include "map/map.hpp"
 #include "map/utils.hpp"
 #include "state/state.hpp"
 
@@ -25,6 +26,7 @@ struct ObjectiveArgs {
   // Map smoothness
   double smoothness_factor = 1;  // Factor by which to multiply the smoothness
                                  // term in the objective function
+  DerivativeType smoothness_derivative_type = DerivativeType::FORWARD;
 };
 
 struct OptimizationArgs {
@@ -232,14 +234,6 @@ std::vector<std::pair<Eigen::Matrix<double, Dim, 1>, double>> generate_points_an
  */
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d_to_3d(pcl::PointCloud<pcl::PointXY>::Ptr cloud_2d);
 
-template <int Dim>
-Eigen::VectorXd compute_residuals(
-    const State<Dim> &state,
-    const std::vector<
-        pcl::PointCloud<typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
-        &point_clouds,
-    const ObjectiveArgs &objective_args);
-
 /**
  * @brief Compute the analytical derivative of a map at a given point with
  * respect to the point.
@@ -299,26 +293,6 @@ Eigen::Matrix<double, Dim, 1> compute_dGrad_dNeighbour(const typename Map<Dim>::
                                                        const typename Map<Dim>::index_t &neighbour,
                                                        const std::array<double, Dim> &grid_size,
                                                        const std::array<int, Dim> &num_points);
-
-/**
- * @brief Fills the smoothness derivative map for a 2D map.
- *
- * This function computes the smoothness derivative for a given 2D map and fills
- * the provided triplet list with the results. The smoothness factor is used to
- * control the influence of smoothness in the optimization process.
- *
- * @param map The 2D map for which the smoothness derivative is to be computed.
- * @param smoothness_factor A factor that controls the influence of smoothness.
- * @param tree_global A KdTree used for nearest neighbor search in the global frame.
- * @param normals_global A point cloud containing the normals in the global frame.
- * @param triplet_list A list of Eigen triplets to be filled with the smoothness derivative values.
- * @param residual_index_offset The offset to be added to the residual index.
- */
-void fill_dSmoothness_dMap_2d(const Map<2> &map, const double smoothness_factor,
-                              pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-                              const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
-                              std::vector<Eigen::Triplet<double>> &triplet_list,
-                              const int residual_index_offset);
 
 /**
  * @brief Computes the derivative of roughness with respect to the map.

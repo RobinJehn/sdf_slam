@@ -26,7 +26,7 @@ set(CMAKE_BUILD_TYPE Debug)
 # ================================================
 # Find external libraries
 # ================================================
-find_package(PCL 1.8 REQUIRED COMPONENTS common io visualization)
+find_package(PCL 1.8 REQUIRED COMPONENTS common io visualization features kdtree search)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
@@ -46,6 +46,9 @@ FetchContent_MakeAvailable(yaml-cpp)
 # Add Subdirectories
 # ================================================
 add_subdirectory(src)
+
+# Add the Normal-Estimation-2d subdirectory
+add_subdirectory(deps/PCL-Normal-Estimation-2d)
 
 # ================================================
 # Add Tests if enabled

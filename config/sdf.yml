@@ -5,6 +5,7 @@ objective_args:
   scan_line_factor: 1.0
   scan_point_factor: 1.0
   smoothness_factor: 0.05
+  smoothness_type: "FORWARD"
 
 map_args:
   num_points: [40, 40]

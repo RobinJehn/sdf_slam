@@ -26,6 +26,16 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.objective_args.smoothness_factor =
       config["objective_args"]["smoothness_factor"].as<double>();
 
+  const std::string smoothness_derivative_type =
+      config["objective_args"]["smoothness_derivative_type"].as<std::string>();
+  if (smoothness_derivative_type == "UPWIND") {
+    args.objective_args.smoothness_derivative_type = DerivativeType::UPWIND;
+  } else if (smoothness_derivative_type == "FORWARD") {
+    args.objective_args.smoothness_derivative_type = DerivativeType::FORWARD;
+  } else {
+    throw std::runtime_error("Invalid smoothness_derivative_type.");
+  }
+
   // Read map_args from YAML
   if constexpr (Dim == 2) {
     args.map_args.num_points = {config["map_args"]["num_points"][0].as<int>(),

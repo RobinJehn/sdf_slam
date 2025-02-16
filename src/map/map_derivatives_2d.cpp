@@ -106,6 +106,40 @@ std::array<double, 2> central_difference_2d(const Map<2> &map, const Map<2>::ind
   return gradient;
 }
 
+std::array<double, 2> forward_difference_2d(const Map<2> &map, const Map<2>::index_t &index) {
+  const auto num_points = map.get_num_points();
+
+  if (index[0] < 0 || index[0] > num_points[0] - 1) {
+    throw std::out_of_range("Index x out of bounds");
+  }
+  if (index[1] < 0 || index[1] > num_points[1] - 1) {
+    throw std::out_of_range("Index y out of bounds");
+  }
+  if (num_points[0] < 2) {
+    throw std::invalid_argument("Number of points in x-direction must be greater than 1");
+  }
+  if (num_points[1] < 2) {
+    throw std::invalid_argument("Number of points in y-direction must be greater than 1");
+  }
+
+  std::array<double, 2> gradient;
+  for (int dim = 0; dim < 2; ++dim) {
+    if (index[dim] < num_points[dim] - 1) {
+      auto index_higher = index;
+      index_higher[dim] += 1;
+      const double value_higher_index = map.get_value_at(index_higher);
+
+      const double own_value = map.get_value_at(index);
+
+      gradient[dim] = (value_higher_index - own_value) / map.get_d(dim);
+    } else {
+      throw std::out_of_range("Index out of bounds");
+    }
+  }
+
+  return gradient;
+}
+
 std::array<Map<2>, 2> df_2d(const Map<2> &map, const DerivativeType &type) {
   const auto num_points = map.get_num_points();
   MapArgs<2> args{num_points, map.get_min_coords(), map.get_max_coords()};
@@ -124,6 +158,8 @@ std::array<Map<2>, 2> df_2d(const Map<2> &map, const DerivativeType &type) {
         gradient = central_difference_2d(map, index);
       } else if (type == DerivativeType::UPWIND) {
         gradient = upwind_difference_2d(map, index);
+      } else if (type == DerivativeType::FORWARD) {
+        gradient = forward_difference_2d(map, index);
       } else {
         throw std::invalid_argument("Invalid derivative type");
       }

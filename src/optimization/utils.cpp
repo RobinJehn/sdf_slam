@@ -403,191 +403,6 @@ Eigen::Matrix<double, 1, Dim + (Dim == 3 ? 3 : 1)> compute_dResidual_dTransform(
   return dResidual_dPoint * dPoint_dTransform;
 }
 
-void fill_dSmoothness_dMap_2d(const Map<2> &map, const double smoothness_factor,
-                              pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-                              const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
-                              std::vector<Eigen::Triplet<double>> &triplet_list,
-                              const int residual_index_offset) {
-  const int num_x = map.get_num_points(0);
-  const int num_y = map.get_num_points(1);
-  const int total_points = map.total_points();
-  const std::array<int, 2> num_points = map.get_num_points();
-  const double dx = map.get_d(0);
-  const double dy = map.get_d(1);
-
-  // Loop over each residual (1 per grid point)
-  for (int i = 0; i < num_x; i++) {
-    for (int j = 0; j < num_y; j++) {
-      const int residual_index = residual_index_offset + i * num_y + j;
-      const typename Map<2>::index_t index = {i, j};
-
-      // Get the surface normal from the scan at this grid point.
-      const typename Map<2>::Vector grid_pt = map.get_location(index);
-      pcl::PointXY grid_pt_pcl;
-      grid_pt_pcl.x = grid_pt.x();
-      grid_pt_pcl.y = grid_pt.y();
-
-      std::vector<int> nn_indices;
-      std::vector<float> nn_dists;
-      tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
-      if (nn_indices.empty()) {
-        continue;
-      }
-      const pcl::Normal n = normals_global->points[nn_indices[0]];
-      double norm_val = std::sqrt(n.normal_x * n.normal_x + n.normal_y * n.normal_y);
-      double sn_x = (norm_val > 1e-6) ? n.normal_x / norm_val : 0.0;
-      double sn_y = (norm_val > 1e-6) ? n.normal_y / norm_val : 0.0;
-
-      // For each dimension, decide whether a forward or backward difference is used.
-      double d_r_d_f_center = 0.0;  // Accumulated derivative contribution at f(i,j)
-
-      // If we are inside the diff is flipped.
-      const bool forward_diff_used_x =
-          i == 0 || ((i < num_x - 1) && std::abs(map.get_value_at({i + 1, j})) <
-                                            std::abs(map.get_value_at({i - 1, j})));
-      const bool forward_diff_used_y =
-          j == 0 || ((j < num_y - 1) && std::abs(map.get_value_at({i, j + 1})) <
-                                            std::abs(map.get_value_at({i, j - 1})));
-      const bool inside = forward_diff_used_x && map.get_value_at({i + 1, j}) < 0 ||
-                          forward_diff_used_y && map.get_value_at({i, j + 1}) < 0 ||
-                          !forward_diff_used_x && map.get_value_at({i - 1, j}) < 0 ||
-                          !forward_diff_used_y && map.get_value_at({i, j - 1}) < 0;
-
-      const int inside_factor = inside ? -1 : 1;
-
-      // X-dimension:
-      if (forward_diff_used_x) {
-        const int flattened_index = map_index_to_flattened_index<2>(num_points, {i + 1, j});
-        triplet_list.push_back({residual_index,                    //
-                                /** parameter */ flattened_index,  //
-                                /** value */ inside_factor * smoothness_factor * sn_x / dx});
-        d_r_d_f_center += -inside_factor * smoothness_factor * sn_x / dx;
-      } else {
-        const int flattened_index = map_index_to_flattened_index<2>(num_points, {i - 1, j});
-        triplet_list.push_back({residual_index,                    //
-                                /** parameter */ flattened_index,  //
-                                /** value */ -inside_factor * smoothness_factor * sn_x / dx});
-        d_r_d_f_center += inside_factor * smoothness_factor * sn_x / dx;
-      }
-
-      // Y-dimension:
-      if (forward_diff_used_y) {
-        const int flattened_index = map_index_to_flattened_index<2>(num_points, {i, j + 1});
-        triplet_list.push_back({residual_index,                    //
-                                /** parameter */ flattened_index,  //
-                                /** value */ inside_factor * smoothness_factor * sn_y / dy});
-        d_r_d_f_center += -inside_factor * smoothness_factor * sn_y / dy;
-      } else {
-        const int flattened_index = map_index_to_flattened_index<2>(num_points, {i, j - 1});
-        triplet_list.push_back({residual_index,                    //
-                                /** parameter */ flattened_index,  //
-                                /** value */ -inside_factor * smoothness_factor * sn_y / dy});
-        d_r_d_f_center += inside_factor * smoothness_factor * sn_y / dy;
-      }
-
-      const int flattened_index = map_index_to_flattened_index<2>(num_points, index);
-      triplet_list.push_back({residual_index,                    //
-                              /** parameter */ flattened_index,  //
-                              /** value */ d_r_d_f_center});
-    }
-  }
-
-  for (auto &triplet : triplet_list) {
-    if (triplet.col() == 633) {
-      std::cout << triplet.row() << " " << triplet.col() << " " << triplet.value() << std::endl;
-      continue;
-    }
-  }
-}
-
-std::vector<double> compute_smoothing_residuals_2d(
-    const Map<2> &map, const double smoothness_factor,
-    pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global) {
-  // Retrieve the derivative maps (for x and y).
-  const std::array<Map<2>, 2> derivatives = map.df(DerivativeType::UPWIND);
-
-  // Get grid dimensions.
-  int num_x = derivatives[0].get_num_points(0);
-  int num_y = derivatives[0].get_num_points(1);
-
-  // Prepare a vector to hold one residual per grid point.
-  std::vector<double> residuals;
-  residuals.resize(map.total_points(), 0.0);
-
-  // Loop over each grid point.
-  for (int i = 0; i < num_x; i++) {
-    for (int j = 0; j < num_y; j++) {
-      // Get the surface normal at the grid point.
-      const typename Map<2>::index_t index = {i, j};
-      const typename Map<2>::Vector grid_pt = map.get_location(index);
-      pcl::PointXY grid_pt_pcl;
-      grid_pt_pcl.x = grid_pt.x();
-      grid_pt_pcl.y = grid_pt.y();
-
-      std::vector<int> nn_indices;
-      std::vector<float> nn_dists;
-      tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
-      if (nn_indices.empty()) {
-        continue;
-      }
-      const pcl::Normal n = normals_global->points[nn_indices[0]];
-
-      // Extract the partial derivatives.
-      const double dDdx = derivatives[0].get_value_at(index);
-      const double dDdy = derivatives[1].get_value_at(index);
-
-      // Normalize the scan normal.
-      const double norm_val = std::sqrt(n.normal_x * n.normal_x + n.normal_y * n.normal_y);
-      const double sn_x = (norm_val > 1e-6) ? n.normal_x / norm_val : 0.0;
-      const double sn_y = (norm_val > 1e-6) ? n.normal_y / norm_val : 0.0;
-
-      // Project the grid gradient onto the surface normal.
-      double grad_dot_normal = dDdx * sn_x + dDdy * sn_y;
-
-      // Flip the sign if the point is inside an object
-      const bool forward_diff_used_x =
-          i == 0 || (i < num_x - 1 && std::abs(map.get_value_at({i + 1, j})) <
-                                          std::abs(map.get_value_at({i - 1, j})));
-      const bool forward_diff_used_y =
-          j == 0 || (j < num_y - 1 && std::abs(map.get_value_at({i, j + 1})) <
-                                          std::abs(map.get_value_at({i, j - 1})));
-
-      bool inside = forward_diff_used_x && map.get_value_at({i + 1, j}) < 0 ||
-                    forward_diff_used_y && map.get_value_at({i, j + 1}) ||
-                    !forward_diff_used_x && map.get_value_at({i - 1, j}) ||
-                    !forward_diff_used_y && map.get_value_at({i, j - 1});
-      if (inside) {
-        grad_dot_normal *= -1;
-      }
-
-      // Compute the residual for this grid point.
-      const double point_residual = grad_dot_normal - 1.0;
-
-      // Scale the residual by the smoothness factor.
-      residuals[i * num_y + j] = smoothness_factor * point_residual;
-
-      if (((i == 15 or i == 16 or i == 17) && j == 33) || (i == 15 && (j == 32 || j == 34))) {
-        std::cout << "i: " << i << " j: " << j << " dDdx: " << dDdx << " dDdy: " << dDdy
-                  << " sn_x: " << sn_x << " sn_y: " << sn_y
-                  << " grad_dot_normal: " << grad_dot_normal
-                  << " point_residual: " << point_residual
-                  << " residuals: " << residuals[i * num_y + j] << std::endl;
-      }
-
-      if (i == 15 && j == 33) {
-        std::cout << "(15, 33): " << map.get_value_at({i, j})
-                  << " (15, 32): " << map.get_value_at({i, j - 1})
-                  << " (15, 34): " << map.get_value_at({i, j + 1})
-                  << " (14, 33): " << map.get_value_at({i - 1, j})
-                  << " (16, 33): " << map.get_value_at({i + 1, j}) << std::endl;
-      }
-    }
-  }
-
-  return residuals;
-}
-
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d_to_3d(pcl::PointCloud<pcl::PointXY>::Ptr cloud_2d) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_3d(new pcl::PointCloud<pcl::PointXYZ>);
   for (const auto &pt : cloud_3d->points) {
@@ -628,98 +443,6 @@ typename pcl::PointCloud<PointType<Dim>>::Ptr combine_scans(
   }
 
   return total_cloud;
-}
-
-template <int Dim>
-double compute_roughness_residual(const std::array<Map<Dim>, Dim> &derivatives) {
-  double roughness = 0;
-  for (int i = 0; i < derivatives[0].get_num_points(0); i++) {
-    for (int j = 0; j < derivatives[0].get_num_points(1); j++) {
-      if constexpr (Dim == 2) {
-        const typename Map<Dim>::index_t index = {i, j};
-        const double dx = derivatives[0].get_value_at(index);
-        const double dy = derivatives[1].get_value_at(index);
-
-        const double norm = std::sqrt(dx * dx + dy * dy);
-        const double norm_diff = std::abs(norm - 1);
-        roughness += norm_diff;
-      } else {
-        for (int k = 0; k < derivatives[0].get_num_points(2); k++) {
-          const typename Map<Dim>::index_t index = {i, j, k};
-          const double dx = derivatives[0].get_value_at(index);
-          const double dy = derivatives[1].get_value_at(index);
-          const double dz = derivatives[2].get_value_at(index);
-
-          const double norm = std::sqrt(dx * dx + dy * dy + dz * dz);
-          const double norm_diff = std::abs(norm - 1);
-          roughness += norm_diff;
-        }
-      }
-    }
-  }
-  const double average_roughness = roughness / derivatives[0].total_points();
-  return average_roughness;
-}
-
-template <int Dim>
-Eigen::VectorXd compute_residuals(
-    const State<Dim> &state,
-    const std::vector<typename pcl::PointCloud<PointType<Dim>>> &point_clouds,
-    const ObjectiveArgs &objective_args) {
-  const auto &point_value = generate_points_and_desired_values(state, point_clouds, objective_args);
-
-  Eigen::VectorXd residuals;
-
-  if constexpr (Dim == 2) {
-    residuals.resize(point_value.size() + state.map_.total_points());
-  } else {
-    residuals.resize(point_value.size() + 1);
-  }
-  for (int i = 0; i < point_value.size(); ++i) {
-    const auto &[point, desired_value] = point_value[i];
-
-    double interpolated_value = 0;
-    if (state.map_.in_bounds(point)) {
-      interpolated_value = state.map_.value(point);
-    }
-
-    double factor = i % (objective_args.scanline_points + 1) == 0 ? objective_args.scan_point_factor
-                                                                  : objective_args.scan_line_factor;
-    residuals(i) = factor * (interpolated_value - desired_value);
-  }
-
-  // Smoothing term
-  if constexpr (Dim == 2) {
-    // Global cloud
-    std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_ptrs;
-    for (const auto &cloud : point_clouds) {
-      pcl::PointCloud<pcl::PointXY>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXY>(cloud));
-      point_clouds_ptrs.push_back(cloud_ptr);
-    }
-    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_global =
-        local_to_global(state.transformations_, point_clouds_ptrs);
-    const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global = combine_scans<2>(point_clouds_global);
-    pcl::search::KdTree<pcl::PointXY>::Ptr tree_global(new pcl::search::KdTree<pcl::PointXY>);
-    tree_global->setInputCloud(cloud_global);
-
-    // Global normals
-    const pcl::PointCloud<pcl::Normal>::Ptr normals_global = compute_normals_2d(cloud_global);
-
-    const std::vector<double> smoothing_residuals = compute_smoothing_residuals_2d(
-        state.map_, objective_args.smoothness_factor, tree_global, normals_global);
-
-    for (int i = 0; i < smoothing_residuals.size(); ++i) {
-      residuals(point_value.size() + i) = smoothing_residuals[i];
-    }
-  } else {
-    double roughness = 0;
-    const std::array<Map<Dim>, Dim> derivatives = state.map_.df();
-    const double average_roughness = compute_roughness_residual<Dim>(derivatives);
-
-    residuals(point_value.size()) = objective_args.smoothness_factor * average_roughness;
-  }
-
-  return residuals;
 }
 
 template <int Dim>
@@ -1149,14 +872,6 @@ template Eigen::Matrix<double, 1, 6> compute_derivative_map_value_wrt_transforma
     const State<3> &state, const Eigen::Matrix<double, 3, 1> &point,
     const Eigen::Transform<double, 3, Eigen::Affine> &transform, const double epsilon);
 
-template Eigen::VectorXd compute_residuals<2>(
-    const State<2> &state, const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
-    const ObjectiveArgs &objective_args);
-
-template Eigen::VectorXd compute_residuals<3>(
-    const State<3> &state, const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
-    const ObjectiveArgs &objective_args);
-
 template Eigen::Matrix<double, 1, 3> compute_dResidual_dTransform<2>(
     const std::array<Map<2>, 2> &map_derivatives, const Eigen::Matrix<double, 2, 1> &point,
     const Eigen::Transform<double, 2, Eigen::Affine> &transform, const bool numerical);
@@ -1187,3 +902,22 @@ template pcl::PointCloud<pcl::PointXY>::Ptr combine_scans<2>(
     const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans);
 template pcl::PointCloud<pcl::PointXYZ>::Ptr combine_scans<3>(
     const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &scans);
+
+template std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> local_to_global<2>(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> transformations,
+    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans);
+template std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> local_to_global<3>(
+    const std::vector<Eigen::Transform<double, 3, Eigen::Affine>> transformations,
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &scans);
+
+template std::vector<std::pair<Eigen::Matrix<double, 2, 1>, double>>
+generate_points_and_desired_values<2>(
+    const State<2> &state,  //
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
+    const ObjectiveArgs &objective_args);
+
+template std::vector<std::pair<Eigen::Matrix<double, 3, 1>, double>>
+generate_points_and_desired_values<3>(
+    const State<3> &state,  //
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
+    const ObjectiveArgs &objective_args);

@@ -1,0 +1,11 @@
+# Core formatting style
+BasedOnStyle: Google
+
+# Spaces and indentation
+IndentWidth: 2
+
+# Column limits
+ColumnLimit: 100
+
+# New line at end of file
+InsertNewlineAtEOF: true
