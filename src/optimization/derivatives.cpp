@@ -16,7 +16,6 @@ void fill_dSmoothness_dMap_2d_upwind(const Map<2> &map, const double smoothness_
                                      const int residual_index_offset) {
   const int num_x = map.get_num_points(0);
   const int num_y = map.get_num_points(1);
-  const int total_points = map.total_points();
   const std::array<int, 2> num_points = map.get_num_points();
   const double dx = map.get_d(0);
   const double dy = map.get_d(1);
@@ -106,15 +105,14 @@ void fill_dSmoothness_dMap_2d_forward(const Map<2> &map, const double smoothness
                                       const int residual_index_offset) {
   const int num_x = map.get_num_points(0);
   const int num_y = map.get_num_points(1);
-  const int total_points = map.total_points();
   const std::array<int, 2> num_points = map.get_num_points();
   const double dx = map.get_d(0);
   const double dy = map.get_d(1);
 
   // Loop over each residual (1 per grid point)
-  for (int i = 0; i < num_x; i++) {
-    for (int j = 0; j < num_y; j++) {
-      const int residual_index = residual_index_offset + i * num_y + j;
+  for (int i = 0; i < num_x - 1; i++) {
+    for (int j = 0; j < num_y - 1; j++) {
+      const int residual_index = residual_index_offset + i * (num_y - 1) + j;
       const typename Map<2>::index_t index = {i, j};
 
       // Get the surface normal from the scan at this grid point.

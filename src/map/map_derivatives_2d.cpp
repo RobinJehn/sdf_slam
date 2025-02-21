@@ -124,17 +124,19 @@ std::array<double, 2> forward_difference_2d(const Map<2> &map, const Map<2>::ind
 
   std::array<double, 2> gradient;
   for (int dim = 0; dim < 2; ++dim) {
-    if (index[dim] < num_points[dim] - 1) {
-      auto index_higher = index;
-      index_higher[dim] += 1;
-      const double value_higher_index = map.get_value_at(index_higher);
-
-      const double own_value = map.get_value_at(index);
-
-      gradient[dim] = (value_higher_index - own_value) / map.get_d(dim);
-    } else {
-      throw std::out_of_range("Index out of bounds");
+    if (index[dim] == num_points[dim] - 1) {
+      // Cannot compute forward difference at the last node
+      gradient[dim] = 0.0;
+      continue;
     }
+
+    auto index_higher = index;
+    index_higher[dim] += 1;
+    const double value_higher_index = map.get_value_at(index_higher);
+
+    const double own_value = map.get_value_at(index);
+
+    gradient[dim] = (value_higher_index - own_value) / map.get_d(dim);
   }
 
   return gradient;

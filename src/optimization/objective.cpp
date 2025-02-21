@@ -7,6 +7,7 @@
 #include "residuals.hpp"
 #include "state/state.hpp"
 #include "utils.hpp"
+#include "visualize/utils.hpp"
 
 template <int Dim>
 ObjectiveFunctor<Dim>::ObjectiveFunctor(
@@ -92,19 +93,15 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
   // Smoothness residuals
   if constexpr (Dim == 2) {
     // Global cloud
-    std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_ptrs;
-    for (const auto &cloud : point_clouds_) {
-      pcl::PointCloud<pcl::PointXY>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXY>(cloud));
-      point_clouds_ptrs.push_back(cloud_ptr);
-    }
-    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_global =
-        local_to_global(state.transformations_, point_clouds_ptrs);
-    const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global = combine_scans<2>(point_clouds_global);
+    const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global =
+        scans_to_global_pcl_2d(state.transformations_, point_clouds_);
     pcl::search::KdTree<pcl::PointXY>::Ptr tree_global(new pcl::search::KdTree<pcl::PointXY>);
     tree_global->setInputCloud(cloud_global);
 
     // Global normals
-    const pcl::PointCloud<pcl::Normal>::Ptr normals_global = compute_normals_2d(cloud_global);
+    std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans = cloud_to_cloud_ptr(point_clouds_);
+    const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
+        compute_normals_global_2d(scans, state.transformations_);
 
     fill_dSmoothness_dMap_2d(state.map_, objective_args_.smoothness_factor, tree_global,
                              normals_global, triplet_list, point_value.size(),

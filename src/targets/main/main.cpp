@@ -107,7 +107,7 @@ void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, chol
                 << std::endl;
     }
     if (opt_args.visualize) {
-      visualizeMap(params, scans, map_args, initial_frame);
+      visualize_map(params, scans, map_args, initial_frame);
     }
 
     // Free memory
@@ -164,16 +164,21 @@ int main() {
     // }
 
     // Initialize the map and set up the optimization parameters
-    Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth, args.general_args.initial_value);
+    Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth,
+                          args.general_args.initial_value);
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
 
     // Visualize the initial map
-    visualizeMap(params, point_clouds, args.map_args, scans.frames[0]);
+    visualize_map(params, point_clouds, args.map_args, scans.frames[0]);
 
     // Set up the objective functor for optimization
     const int num_points = point_clouds[0].size() * point_clouds.size();
+    const uint num_smoothing_residuals =
+        args.objective_args.smoothness_derivative_type == DerivativeType::FORWARD
+            ? (map.get_num_points(0) - 1) * (map.get_num_points(1) - 1)
+            : map.total_points();
     const int num_residuals =
-        num_points * (args.objective_args.scanline_points + 1) + map.total_points();
+        num_points * (args.objective_args.scanline_points + 1) + num_smoothing_residuals;
     ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, point_clouds,
                                 args.objective_args, scans.frames[0]);
 
@@ -185,7 +190,7 @@ int main() {
     cholmod_finish(&c);
 
     // Visualize the optimized map
-    visualizeMap(params, point_clouds, args.map_args, scans.frames[0]);
+    visualize_map(params, point_clouds, args.map_args, scans.frames[0]);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;

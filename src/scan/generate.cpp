@@ -120,8 +120,9 @@ double derivative(double x, double x0, double y0) {
 
 double find_closest_point(const double x, const double y, const double x_initial) {
   // We'll use the bisection method to find the root of the derivative
-  double x_min = x - M_PI;
-  double x_max = x + M_PI;
+  const double range = 0.5;
+  const double x_min = x - range;
+  const double x_max = x + range;
   double tol = 1e-6;
   int max_iter = 100;
 

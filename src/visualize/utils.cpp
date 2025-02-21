@@ -90,15 +90,52 @@ cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_he
   return color_map_image;
 }
 
-void overlayPoints(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
-                   const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                   const Eigen::Vector2d &scale) {
+void overlay_points(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
+                    const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
+                    const Eigen::Vector2d &scale) {
   for (const auto &point : points) {
     const Eigen::Vector2d map_point = (point - min_coords).cwiseProduct(scale);
     const int x = static_cast<int>(map_point.x());
     const int y = image.rows - static_cast<int>(map_point.y());
     if (x >= 0 && x < image.cols && y >= 0 && y < image.rows) {
       cv::circle(image, cv::Point(x, y), 1, cv::Scalar(0, 0, 255), -1);
+    }
+  }
+}
+
+void overlay_surface_normals(cv::Mat &image, const Map<2> &map,
+                             const pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
+                             const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
+                             const Eigen::Vector2d &scale) {
+  for (int i = 0; i < map.get_num_points(0); i++) {
+    for (int j = 0; j < map.get_num_points(1); j++) {
+      const typename Map<2>::index_t index = {i, j};
+      typename Map<2>::Vector grid_pt = map.get_location(index);
+      // Move the normal to the middle of the square
+      grid_pt += 0.5 * Eigen::Vector2d(map.get_d(0), map.get_d(1));
+
+      pcl::PointXY grid_pt_pcl;
+      grid_pt_pcl.x = grid_pt.x() + 0.5 * map.get_d(0);
+      grid_pt_pcl.y = grid_pt.y() + 0.5 * map.get_d(1);
+
+      std::vector<int> nn_indices;
+      std::vector<float> nn_dists;
+      tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
+      if (nn_indices.empty()) {
+        continue;
+      }
+      const pcl::Normal n = normals_global->points[nn_indices[0]];
+
+      const Eigen::Vector2d map_point = (grid_pt - map.get_min_coords()).cwiseProduct(scale);
+      const int x = static_cast<int>(map_point.x());
+      const int y = image.rows - static_cast<int>(map_point.y());
+
+      const Eigen::Vector2d normal_end = grid_pt + 0.1 * Eigen::Vector2d(n.normal_x, n.normal_y);
+      const Eigen::Vector2d map_normal_end =
+          (normal_end - map.get_min_coords()).cwiseProduct(scale);
+      const int x_end = static_cast<int>(map_normal_end.x());
+      const int y_end = image.rows - static_cast<int>(map_normal_end.y());
+      cv::line(image, cv::Point(x, y), cv::Point(x_end, y_end), cv::Scalar(0, 255, 0), 1);
     }
   }
 }
@@ -130,15 +167,18 @@ void onMouse(int event, int x, int y, int flags, void *userdata) {
   }
 }
 
-void displayMapWithPoints(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> &points,
-                          const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                          const int output_width, const int output_height) {
+void display_map_with_points(const Eigen::MatrixXd &map,  //
+                             const std::vector<Eigen::Vector2d> &points,
+                             const Eigen::Vector2d &min_coords,  //
+                             const Eigen::Vector2d &max_coords,
+                             const int output_width,  //
+                             const int output_height) {
   const Eigen::Vector2d image_size = Eigen::Vector2d(output_width, output_height);
   const Eigen::Vector2d map_size = max_coords - min_coords;
   const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
 
   cv::Mat color_map_image = map_to_image(map, output_width, output_height);
-  overlayPoints(color_map_image, points, min_coords, max_coords, scale);
+  overlay_points(color_map_image, points, min_coords, max_coords, scale);
 
   CallbackData data = {map, output_width, output_height};
   cv::setMouseCallback("Map with Points", onMouse, &data);
@@ -146,8 +186,47 @@ void displayMapWithPoints(const Eigen::MatrixXd &map, const std::vector<Eigen::V
   cv::waitKey(0);
 }
 
+void display_map_with_points_and_surface_normal(
+    const Eigen::MatrixXd &map,  //
+    const Map<2> &map_map,       //
+    const std::vector<Eigen::Vector2d> &points,
+    const Eigen::Vector2d &min_coords,  //
+    const Eigen::Vector2d &max_coords,
+    const int output_width,   //
+    const int output_height,  //
+    const pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global) {
+  const Eigen::Vector2d image_size = Eigen::Vector2d(output_width, output_height);
+  const Eigen::Vector2d map_size = max_coords - min_coords;
+  const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
+
+  cv::Mat color_map_image = map_to_image(map, output_width, output_height);
+  overlay_points(color_map_image, points, min_coords, max_coords, scale);
+  overlay_surface_normals(color_map_image, map_map, tree_global, normals_global, scale);
+
+  CallbackData data = {map, output_width, output_height};
+  cv::setMouseCallback("Map with Points", onMouse, &data);
+  cv::imshow("Map with Points", color_map_image);
+  cv::waitKey(0);
+}
+
+pcl::PointCloud<pcl::PointXY>::Ptr scans_to_global_pcl_2d(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans) {
+  std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_ptrs;
+  for (const auto &cloud : scans) {
+    pcl::PointCloud<pcl::PointXY>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXY>(cloud));
+    point_clouds_ptrs.push_back(cloud_ptr);
+  }
+  const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_global =
+      local_to_global(transformations, point_clouds_ptrs);
+  const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global = combine_scans<2>(point_clouds_global);
+
+  return cloud_global;
+}
+
 template <int Dim>
-std::vector<Eigen::Matrix<double, Dim, 1>> scan_to_global(
+std::vector<Eigen::Matrix<double, Dim, 1>> scans_to_global_eigen(
     const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> &transformations,
     const std::vector<
         pcl::PointCloud<typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type>>
@@ -171,25 +250,47 @@ std::vector<Eigen::Matrix<double, Dim, 1>> scan_to_global(
   return global_points;
 }
 
-void visualizeMap(const Eigen::VectorXd &params,
-                  const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-                  const MapArgs<2> &map_args,
-                  const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                  const int output_width, const int output_height) {
+void visualize_map(const Eigen::VectorXd &params,
+                   const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
+                   const MapArgs<2> &map_args,
+                   const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+                   const int output_width, const int output_height) {
   State<2> state = unflatten<2>(params, initial_frame, map_args);
 
-  std::vector<Eigen::Vector2d> global_points = scan_to_global<2>(state.transformations_, scans);
+  std::vector<Eigen::Vector2d> global_points =
+      scans_to_global_eigen<2>(state.transformations_, scans);
+  const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global =
+      scans_to_global_pcl_2d(state.transformations_, scans);
+  pcl::search::KdTree<pcl::PointXY>::Ptr tree_global(new pcl::search::KdTree<pcl::PointXY>);
+  tree_global->setInputCloud(cloud_global);
+
+  // Global normals
+  std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans_ptr = cloud_to_cloud_ptr(scans);
+  const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
+      compute_normals_global_2d(scans_ptr, state.transformations_);
+  for (size_t i = 0; i < cloud_global->points.size(); ++i) {
+    const auto &point = cloud_global->points[i];
+    const auto &normal = normals_global->points[i];
+
+    std::cout << "Point " << i << ": (" << point.x << ", " << point.y << ")\n"
+              << "Normal: (" << normal.normal_x << ", " << normal.normal_y << ", "
+              << normal.normal_z << ")\n"
+              << std::endl;
+  }
 
   // Generate and display the map image
   Eigen::MatrixXd map(map_args.num_points[0], map_args.num_points[1]);
   for (int x = 0; x < map_args.num_points[0]; ++x) {
     for (int y = 0; y < map_args.num_points[1]; ++y) {
       // (row, column) row is y, column is x
-      map(y, x) = std::max(-100.0, std::min(100.0, state.map_.get_value_at({x, y})));
+      map(y, x) = std::max(-5.0, std::min(5.0, state.map_.get_value_at({x, y})));
     }
   }
-  displayMapWithPoints(map, global_points, map_args.min_coords, map_args.max_coords, output_width,
-                       output_height);
+  // display_map_with_points(map, global_points, map_args.min_coords, map_args.max_coords,
+  //                         output_width, output_height);
+  display_map_with_points_and_surface_normal(map, state.map_, global_points, map_args.min_coords,
+                                             map_args.max_coords, output_width, output_height,
+                                             tree_global, normals_global);
 }
 
 // Explicit template instantiation for 2D points
@@ -200,12 +301,12 @@ template void plotPointsWithValuesPCL<2>(
 template void plotPointsWithValuesPCL<3>(
     const std::vector<std::pair<Eigen::Matrix<double, 3, 1>, double>> &);
 
-// Explicit template instantiation for scan_to_global with 2D points
-template std::vector<Eigen::Matrix<double, 2, 1>> scan_to_global<2>(
+// Explicit template instantiation for scans_to_global_eigen with 2D points
+template std::vector<Eigen::Matrix<double, 2, 1>> scans_to_global_eigen<2>(
     const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans);
 
-// Explicit template instantiation for scan_to_global with 3D points
-template std::vector<Eigen::Matrix<double, 3, 1>> scan_to_global<3>(
+// Explicit template instantiation for scans_to_global_eigen with 3D points
+template std::vector<Eigen::Matrix<double, 3, 1>> scans_to_global_eigen<3>(
     const std::vector<Eigen::Transform<double, 3, Eigen::Affine>> &transformations,
     const std::vector<pcl::PointCloud<pcl::PointXYZ>> &scans);

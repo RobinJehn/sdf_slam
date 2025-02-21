@@ -433,6 +433,41 @@ std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> local_to_global(
   return scans_global;
 }
 
+pcl::PointCloud<pcl::Normal>::Ptr local_to_global_normals_2d(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<pcl::PointCloud<pcl::Normal>::Ptr> &scans) {
+  // Create a single global cloud
+  pcl::PointCloud<pcl::Normal>::Ptr global_cloud(new pcl::PointCloud<pcl::Normal>);
+
+  for (size_t i = 0; i < scans.size(); ++i) {
+    const auto &transformation = transformations[i];
+
+    // Extract only the rotation part for transforming normals (ignore translation)
+    Eigen::Matrix2d rotation = transformation.rotation();
+
+    for (const auto &normal : scans[i]->points) {
+      pcl::Normal transformed_normal;
+
+      // Apply 2D rotation to the normal vector
+      Eigen::Vector2d n_2d(normal.normal_x, normal.normal_y);
+      Eigen::Vector2d transformed_n_2d = rotation * n_2d;
+
+      transformed_normal.normal_x = transformed_n_2d.x();
+      transformed_normal.normal_y = transformed_n_2d.y();
+      transformed_normal.normal_z = 0.0f;  // Z is ignored in 2D
+
+      global_cloud->points.push_back(transformed_normal);
+    }
+  }
+
+  // Update cloud metadata
+  global_cloud->width = static_cast<uint32_t>(global_cloud->points.size());
+  global_cloud->height = 1;
+  global_cloud->is_dense = true;
+
+  return global_cloud;
+}
+
 template <int Dim>
 typename pcl::PointCloud<PointType<Dim>>::Ptr combine_scans(
     const std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> &scans) {
@@ -757,6 +792,35 @@ std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map
   return dRoughness_dMap;
 }
 
+std::vector<pcl::PointCloud<pcl::Normal>::Ptr> compute_normals_local_2d(
+    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans) {
+  std::vector<pcl::PointCloud<pcl::Normal>::Ptr> scan_normals;
+  for (const auto &scan : scans) {
+    pcl::PointCloud<pcl::Normal>::Ptr normals = compute_normals_2d(scan);
+    scan_normals.push_back(normals);
+  }
+
+  return scan_normals;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals_global_2d(
+    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations) {
+  std::vector<pcl::PointCloud<pcl::Normal>::Ptr> scan_normals = compute_normals_local_2d(scans);
+  return local_to_global_normals_2d(transformations, scan_normals);
+}
+
+std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> cloud_to_cloud_ptr(
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds) {
+  std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans;
+  for (const auto &scan : point_clouds) {
+    pcl::PointCloud<pcl::PointXY>::Ptr scan_copy(new pcl::PointCloud<pcl::PointXY>);
+    *scan_copy = scan;
+    scans.push_back(scan_copy);
+  }
+  return scans;
+}
+
 pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
     const pcl::PointCloud<pcl::PointXY>::Ptr &cloud, const double search_radius) {
   // Convert the 2D cloud to a 3D cloud (with z = 0)
@@ -779,44 +843,12 @@ pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
 
   // Create an instance of Normal2dEstimation and compute normals.
-  Normal2dEstimation norm_estim;
+  Normal2dEstimation norm_estim(search_radius);  // By default the view point is (0, 0)
   norm_estim.setInputCloud(cloud3d);
   norm_estim.setSearchMethod(tree);
-  norm_estim.setRadiusSearch(search_radius);
   norm_estim.compute(norm_cloud);
 
   return norm_cloud;
-}
-
-pcl::PointCloud<pcl::Normal>::Ptr compute_normals_3d(
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud, const double search_radius) {
-  // Create a container for the computed normals.
-  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-
-  // Create a KD-Tree for the 3D points.
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-  tree->setInputCloud(cloud);
-
-  // Set up the normal estimation object.
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-  ne.setInputCloud(cloud);
-  ne.setSearchMethod(tree);
-  ne.setRadiusSearch(search_radius);
-
-  // Compute the normals.
-  ne.compute(*normals);
-
-  return normals;
-}
-
-template <int Dim>
-pcl::PointCloud<pcl::Normal>::Ptr compute_normals(
-    const typename pcl::PointCloud<PointType<Dim>>::Ptr &cloud, const double search_radius) {
-  if constexpr (Dim == 2) {
-    return compute_normals_2d(cloud, search_radius);
-  } else {
-    return compute_normals_3d(cloud, search_radius);
-  }
 }
 
 // Explicit template instantiation
@@ -892,11 +924,6 @@ template std::vector<double> compute_dRoughness_dMap<2>(
     const std::array<Map<2>, 2> &map_derivatives);
 template std::vector<double> compute_dRoughness_dMap<3>(
     const std::array<Map<3>, 3> &map_derivatives);
-
-template pcl::PointCloud<pcl::Normal>::Ptr compute_normals<2>(
-    const typename pcl::PointCloud<PointType<2>>::Ptr &cloud, const double radiusSearch);
-template pcl::PointCloud<pcl::Normal>::Ptr compute_normals<3>(
-    const typename pcl::PointCloud<PointType<3>>::Ptr &cloud, const double radiusSearch);
 
 template pcl::PointCloud<pcl::PointXY>::Ptr combine_scans<2>(
     const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans);

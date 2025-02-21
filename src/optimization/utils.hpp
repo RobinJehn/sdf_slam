@@ -315,12 +315,13 @@ std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map
  * @brief Computes 2D normals for a given point cloud.
  *
  * This function calculates the normals for a 2D point cloud using a specified radius for the
- * search.
+ * search. Assumes that the cloud is scanned from position (0, 0). All normals will be pointing
+ * towards the origin.
  *
  * @param cloud A pointer to the input point cloud
  * @param search_radius The radius used for the nearest neighbor search.
  *
- * @return A pointer to the computed normals of type pcl::PointCloud<pcl::Normal>.
+ * @return A pointer to the computed normals
  */
 pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
     const pcl::PointCloud<pcl::PointXY>::Ptr &cloud, double search_radius = 0.2);
@@ -341,22 +342,6 @@ pcl::PointCloud<pcl::Normal>::Ptr compute_normals_3d(
 
 template <int Dim>
 using PointType = typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
-
-/**
- * @brief Computes the normals of a point cloud.
- *
- * This function calculates the normals for each point in the given point cloud
- * using a specified radius for the neighborhood search.
- *
- * @tparam Dim The dimension of the point type.
- * @param cloud A pointer to the input point cloud.
- * @param search_radius The radius used for the neighborhood search.
- * @return pcl::PointCloud<pcl::Normal>::Ptr A pointer to the point cloud containing the computed
- * normals.
- */
-template <int Dim>
-pcl::PointCloud<pcl::Normal>::Ptr compute_normals(
-    const typename pcl::PointCloud<PointType<Dim>>::Ptr &cloud, const double search_radius = 0.2);
 
 /**
  * @brief Computes the derivative of a 3D transformation.
@@ -437,3 +422,51 @@ template <int Dim>
 std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> local_to_global(
     const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> transformations,
     const std::vector<typename pcl::PointCloud<PointType<Dim>>::Ptr> &scans);
+
+/**
+ * @brief Transforms a set of 2D normal point clouds from local to global coordinates.
+ *
+ * This function takes a vector of 2D affine transformations and a corresponding vector of
+ * point clouds containing normals, and applies each transformation to the respective point
+ * cloud to convert the normals from local to global coordinates. Since normals are 3d vectors,
+ * the z-component is assumed to be zero.
+ *
+ * We assume that the normal cloud has the same order as the cloud returned by
+ * scans_to_global_pcl_2d.
+ *
+ * @param transformations 2D affine transformations to be applied to each point cloud.
+ * @param scans A vector of point clouds containing normals to be transformed.
+ * Each point cloud in this vector corresponds to a transformation in the `transformations` vector.
+ *
+ * @return A pointer to a new point cloud containing the transformed normals in global coordinates.
+ */
+pcl::PointCloud<pcl::Normal>::Ptr local_to_global_normals_2d(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<pcl::PointCloud<pcl::Normal>::Ptr> &scans);
+
+/**
+ * @brief Computes the normals for a set of 2D point clouds in a global coordinate frame.
+ *
+ * This function takes a vector of 2D point clouds and their corresponding transformations,
+ * and computes the normals for each point cloud in the global coordinate frame.
+ *
+ * @param scans A vector of shared pointers to 2D point clouds (pcl::PointCloud<pcl::PointXY>::Ptr).
+ * @param transformations A vector of 2D affine transformations (Eigen::Transform<double, 2,
+ * Eigen::Affine>) that represent the pose of each point cloud in the global coordinate frame.
+ * @return A shared pointer to a point cloud of normals (pcl::PointCloud<pcl::Normal>::Ptr) computed
+ *         for the input point clouds in the global coordinate frame.
+ */
+pcl::PointCloud<pcl::Normal>::Ptr compute_normals_global_2d(
+    const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations);
+
+/**
+ * @brief Converts a vector of pcl::PointCloud<pcl::PointXY> to a vector of
+ * pcl::PointCloud<pcl::PointXY>::Ptr.
+ *
+ * @param point_clouds A vector of pcl::PointCloud<pcl::PointXY> objects to be converted.
+ * @return std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> A vector of shared pointers to
+ * pcl::PointCloud<pcl::PointXY> objects.
+ */
+std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> cloud_to_cloud_ptr(
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds);

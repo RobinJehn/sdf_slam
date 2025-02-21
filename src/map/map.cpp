@@ -10,7 +10,7 @@ template <int Dim>
 Map<Dim>::Map(const MapArgs<Dim> &args)
     : num_points_(args.num_points), min_coords_(args.min_coords), max_coords_(args.max_coords) {
   for (int i = 0; i < Dim; ++i) {
-    d_[i] = (max_coords_[i] - min_coords_[i]) / (num_points_[i] - 1);
+    d_[i] = (max_coords_[i] - min_coords_[i]) / num_points_[i];
   }
 
   // Initialize grid values to 0

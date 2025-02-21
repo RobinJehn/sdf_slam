@@ -8,6 +8,7 @@
 
 #include "map/map.hpp"
 #include "utils.hpp"
+#include "visualize/utils.hpp"
 
 std::vector<double> compute_smoothness_residual_2d(
     const Map<2> &map, const double smoothness_factor,
@@ -88,6 +89,9 @@ std::vector<double> compute_smoothness_residual_2d_upwind(
 
       // Compute the residual for this grid point.
       const double point_residual = grad_dot_normal - 1.0;
+
+      // Scale the residual by the smoothness factor.
+      residuals[i * num_y + j] = smoothness_factor * point_residual;
     }
   }
 
@@ -111,8 +115,8 @@ std::vector<double> compute_smoothness_residual_2d_forward(
   residuals.resize(residual_size, 0.0);
 
   // Loop over each grid point.
-  for (int i = 0; i < num_x; i++) {
-    for (int j = 0; j < num_y; j++) {
+  for (int i = 0; i < num_x - 1; i++) {
+    for (int j = 0; j < num_y - 1; j++) {
       // Get the surface normal at the grid point.
       const typename Map<2>::index_t index = {i, j};
       const typename Map<2>::Vector grid_pt = map.get_location(index);
@@ -144,11 +148,19 @@ std::vector<double> compute_smoothness_residual_2d_forward(
         grad_dot_normal *= -1;
       }
 
+      std::cout << "i: " << i << " j: " << j  //
+                << "{i, j}: " << map.get_value_at({i, j})
+                << " {i, j+1}: " << map.get_value_at({i, j + 1})
+                << " {i+1, j}: " << map.get_value_at({i + 1, j})  //
+                << " sn_x: " << sn_x << " sn_y: " << sn_y         //
+                << " inside: " << inside << " dDdx: " << dDdx     //
+                << " dDdy: " << dDdy << " grad_dot_normal: " << grad_dot_normal << std::endl;
+
       // Compute the residual for this grid point.
       const double point_residual = grad_dot_normal - 1.0;
 
       // Scale the residual by the smoothness factor.
-      residuals[i * num_y + j] = smoothness_factor * point_residual;
+      residuals[i * (num_y - 1) + j] = smoothness_factor * point_residual;
     }
   }
 
@@ -183,19 +195,15 @@ Eigen::VectorXd compute_residuals_2d(const State<2> &state,
 
   // Smoothing residuals
   // Global cloud
-  std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_ptrs;
-  for (const auto &cloud : point_clouds) {
-    pcl::PointCloud<pcl::PointXY>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXY>(cloud));
-    point_clouds_ptrs.push_back(cloud_ptr);
-  }
-  const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> point_clouds_global =
-      local_to_global(state.transformations_, point_clouds_ptrs);
-  const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global = combine_scans<2>(point_clouds_global);
+  const pcl::PointCloud<pcl::PointXY>::Ptr cloud_global =
+      scans_to_global_pcl_2d(state.transformations_, point_clouds);
   pcl::search::KdTree<pcl::PointXY>::Ptr tree_global(new pcl::search::KdTree<pcl::PointXY>);
   tree_global->setInputCloud(cloud_global);
 
   // Global normals
-  const pcl::PointCloud<pcl::Normal>::Ptr normals_global = compute_normals_2d(cloud_global);
+  std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans = cloud_to_cloud_ptr(point_clouds);
+  const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
+      compute_normals_global_2d(scans, state.transformations_);
 
   const std::vector<double> smoothing_residuals =
       compute_smoothness_residual_2d(state.map_, objective_args.smoothness_factor, tree_global,
