@@ -268,15 +268,6 @@ void visualize_map(const Eigen::VectorXd &params,
   std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans_ptr = cloud_to_cloud_ptr(scans);
   const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
       compute_normals_global_2d(scans_ptr, state.transformations_);
-  for (size_t i = 0; i < cloud_global->points.size(); ++i) {
-    const auto &point = cloud_global->points[i];
-    const auto &normal = normals_global->points[i];
-
-    std::cout << "Point " << i << ": (" << point.x << ", " << point.y << ")\n"
-              << "Normal: (" << normal.normal_x << ", " << normal.normal_y << ", "
-              << normal.normal_z << ")\n"
-              << std::endl;
-  }
 
   // Generate and display the map image
   Eigen::MatrixXd map(map_args.num_points[0], map_args.num_points[1]);

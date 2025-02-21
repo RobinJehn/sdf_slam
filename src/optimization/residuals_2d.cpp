@@ -71,22 +71,6 @@ std::vector<double> compute_smoothness_residual_2d_upwind(
       // Project the grid gradient onto the surface normal.
       double grad_dot_normal = dDdx * sn_x + dDdy * sn_y;
 
-      // Flip the sign if the point is inside an object
-      const bool forward_diff_used_x =
-          i == 0 || (i < num_x - 1 && std::abs(map.get_value_at({i + 1, j})) <
-                                          std::abs(map.get_value_at({i - 1, j})));
-      const bool forward_diff_used_y =
-          j == 0 || (j < num_y - 1 && std::abs(map.get_value_at({i, j + 1})) <
-                                          std::abs(map.get_value_at({i, j - 1})));
-
-      bool inside = forward_diff_used_x && map.get_value_at({i + 1, j}) < 0 ||
-                    forward_diff_used_y && map.get_value_at({i, j + 1}) ||
-                    !forward_diff_used_x && map.get_value_at({i - 1, j}) ||
-                    !forward_diff_used_y && map.get_value_at({i, j - 1});
-      if (inside) {
-        grad_dot_normal *= -1;
-      }
-
       // Compute the residual for this grid point.
       const double point_residual = grad_dot_normal - 1.0;
 
@@ -143,18 +127,6 @@ std::vector<double> compute_smoothness_residual_2d_forward(
 
       // Project the grid gradient onto the surface normal.
       double grad_dot_normal = dDdx * sn_x + dDdy * sn_y;
-      bool inside = map.get_value_at({i + 1, j}) < 0 || map.get_value_at({i, j + 1});
-      if (inside) {
-        grad_dot_normal *= -1;
-      }
-
-      std::cout << "i: " << i << " j: " << j  //
-                << "{i, j}: " << map.get_value_at({i, j})
-                << " {i, j+1}: " << map.get_value_at({i, j + 1})
-                << " {i+1, j}: " << map.get_value_at({i + 1, j})  //
-                << " sn_x: " << sn_x << " sn_y: " << sn_y         //
-                << " inside: " << inside << " dDdx: " << dDdx     //
-                << " dDdy: " << dDdy << " grad_dot_normal: " << grad_dot_normal << std::endl;
 
       // Compute the residual for this grid point.
       const double point_residual = grad_dot_normal - 1.0;

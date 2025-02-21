@@ -53,26 +53,20 @@ void fill_dSmoothness_dMap_2d_upwind(const Map<2> &map, const double smoothness_
       const bool forward_diff_used_y =
           j == 0 || ((j < num_y - 1) && std::abs(map.get_value_at({i, j + 1})) <
                                             std::abs(map.get_value_at({i, j - 1})));
-      const bool inside = forward_diff_used_x && map.get_value_at({i + 1, j}) < 0 ||
-                          forward_diff_used_y && map.get_value_at({i, j + 1}) < 0 ||
-                          !forward_diff_used_x && map.get_value_at({i - 1, j}) < 0 ||
-                          !forward_diff_used_y && map.get_value_at({i, j - 1}) < 0;
-
-      const int inside_factor = inside ? -1 : 1;
 
       // X-dimension:
       if (forward_diff_used_x) {
         const int flattened_index = map_index_to_flattened_index<2>(num_points, {i + 1, j});
         triplet_list.push_back({residual_index,                    //
                                 /** parameter */ flattened_index,  //
-                                /** value */ inside_factor * smoothness_factor * sn_x / dx});
-        d_r_d_f_center += -inside_factor * smoothness_factor * sn_x / dx;
+                                /** value */ smoothness_factor * sn_x / dx});
+        d_r_d_f_center += -smoothness_factor * sn_x / dx;
       } else {
         const int flattened_index = map_index_to_flattened_index<2>(num_points, {i - 1, j});
         triplet_list.push_back({residual_index,                    //
                                 /** parameter */ flattened_index,  //
-                                /** value */ -inside_factor * smoothness_factor * sn_x / dx});
-        d_r_d_f_center += inside_factor * smoothness_factor * sn_x / dx;
+                                /** value */ -smoothness_factor * sn_x / dx});
+        d_r_d_f_center += smoothness_factor * sn_x / dx;
       }
 
       // Y-dimension:
@@ -80,14 +74,14 @@ void fill_dSmoothness_dMap_2d_upwind(const Map<2> &map, const double smoothness_
         const int flattened_index = map_index_to_flattened_index<2>(num_points, {i, j + 1});
         triplet_list.push_back({residual_index,                    //
                                 /** parameter */ flattened_index,  //
-                                /** value */ inside_factor * smoothness_factor * sn_y / dy});
-        d_r_d_f_center += -inside_factor * smoothness_factor * sn_y / dy;
+                                /** value */ smoothness_factor * sn_y / dy});
+        d_r_d_f_center += -smoothness_factor * sn_y / dy;
       } else {
         const int flattened_index = map_index_to_flattened_index<2>(num_points, {i, j - 1});
         triplet_list.push_back({residual_index,                    //
                                 /** parameter */ flattened_index,  //
-                                /** value */ -inside_factor * smoothness_factor * sn_y / dy});
-        d_r_d_f_center += inside_factor * smoothness_factor * sn_y / dy;
+                                /** value */ -smoothness_factor * sn_y / dy});
+        d_r_d_f_center += smoothness_factor * sn_y / dy;
       }
 
       const int flattened_index = map_index_to_flattened_index<2>(num_points, index);
@@ -135,23 +129,19 @@ void fill_dSmoothness_dMap_2d_forward(const Map<2> &map, const double smoothness
       // Accumulated derivative contribution at f(i,j)
       double d_r_d_f_center = 0.0;
 
-      const bool inside = map.get_value_at({i + 1, j}) < 0 || map.get_value_at({i, j + 1}) < 0;
-
-      const int inside_factor = inside ? -1 : 1;
-
       // X-dimension:
       int flattened_index = map_index_to_flattened_index<2>(num_points, {i + 1, j});
       triplet_list.push_back({residual_index,                    //
                               /** parameter */ flattened_index,  //
-                              /** value */ inside_factor * smoothness_factor * sn_x / dx});
-      d_r_d_f_center += -inside_factor * smoothness_factor * sn_x / dx;
+                              /** value */ smoothness_factor * sn_x / dx});
+      d_r_d_f_center += -smoothness_factor * sn_x / dx;
 
       // Y-dimension:
       flattened_index = map_index_to_flattened_index<2>(num_points, {i, j + 1});
       triplet_list.push_back({residual_index,                    //
                               /** parameter */ flattened_index,  //
-                              /** value */ inside_factor * smoothness_factor * sn_y / dy});
-      d_r_d_f_center += -inside_factor * smoothness_factor * sn_y / dy;
+                              /** value */ smoothness_factor * sn_y / dy});
+      d_r_d_f_center += -smoothness_factor * sn_y / dy;
 
       flattened_index = map_index_to_flattened_index<2>(num_points, index);
       triplet_list.push_back({residual_index,                    //
