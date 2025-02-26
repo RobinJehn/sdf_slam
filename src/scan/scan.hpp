@@ -37,10 +37,11 @@ pcl::PointCloud<pcl::PointXY>::Ptr create_scan(const Scene &scene,
  * @param thetas A vector of angles (in radians) representing the orientation of each scanner.
  * @param num_points The number of points to be generated in each scan.
  * @param angle_range The range of angles (in radians) to be covered by each scan.
+ * @param max_range The maximum scanning distance.
+ *
  * @return A vector of point clouds, each representing a scan from a specific scanner position and
  * orientation.
  */
 std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> create_scans(
     const Scene &scene, const std::vector<Eigen::Vector2d> &scanner_positions,
-    const std::vector<double> &thetas, const int num_points = 100,
-    const double angle_range = M_PI / 4);
+    const std::vector<double> &thetas, int num_points, double angle_range, double max_range);

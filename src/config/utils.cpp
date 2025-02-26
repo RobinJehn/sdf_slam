@@ -106,6 +106,9 @@ GenerateScanArgs setup_generate_scan_args(const std::filesystem::path &config_pa
   args.delta_theta = config["delta_theta"].as<double>();
   args.delta_position = Eigen::Vector2d(config["delta_position"][0].as<double>(),
                                         config["delta_position"][1].as<double>());
+  args.angle_range = config["angle_range"].as<double>();
+  args.num_points = config["num_points"].as<int>();
+  args.max_range = config["max_range"].as<double>();
 
   return args;
 }

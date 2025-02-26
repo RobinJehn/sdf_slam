@@ -15,7 +15,7 @@
 #include "optimization/optimizer.hpp"
 #include "optimization/utils.hpp"
 #include "scan/scene.hpp"
-#include "scan/shape.hpp"
+#include "scan/shape/shape.hpp"
 #include "scan/utils.hpp"
 #include "state/state.hpp"
 #include "visualize/utils.hpp"

@@ -11,7 +11,7 @@
 #include "optimization/objective_ceres.hpp"
 #include "optimization/utils.hpp"
 #include "scan/scene.hpp"
-#include "scan/shape.hpp"
+#include "scan/shape/shape.hpp"
 #include "state/state.hpp"
 
 // Helper function to plot a map with sine function overlay

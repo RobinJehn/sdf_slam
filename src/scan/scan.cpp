@@ -45,10 +45,12 @@ std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> create_scans(
     const std::vector<Eigen::Vector2d> &scanner_positions,
     const std::vector<double> &thetas,  //
     const int num_points,               //
-    const double angle_range) {
+    const double angle_range,           //
+    const double max_range) {
   std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans;
   for (int i = 0; i < scanner_positions.size(); ++i) {
-    scans.push_back(create_scan(scene, scanner_positions[i], thetas[i], angle_range, num_points));
+    scans.push_back(
+        create_scan(scene, scanner_positions[i], thetas[i], angle_range, num_points, max_range));
   }
 
   return scans;
