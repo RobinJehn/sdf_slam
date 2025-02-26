@@ -1,14 +1,14 @@
 objective_args:
-  scanline_points: 20
+  scanline_points: 8
   step_size: 0.1
   both_directions: true
   scan_line_factor: 1.0
-  scan_point_factor: 1.0
-  smoothness_factor: 1.0
+  scan_point_factor: 0.5
+  smoothness_factor: 0
   smoothness_derivative_type: "FORWARD" #  FORWARD or UPWIND
 
 map_args:
-  num_points: [40, 40]
+  num_points: [80, 80]
   min_coords: [-3, -7]
   max_coords: [4, 4]
 
@@ -22,11 +22,11 @@ optimization_args:
 
 visualization_args:
   show_points: true
-  show_normals: true
+  show_normals: false
   output_height: 1000
   output_width: 1000
 
 general_args:
-  from_ground_truth: false
+  from_ground_truth: true
   initial_value: 3
-  data_path: ../data/rectangle_scans # relative to build directory
+  data_path: ../data/multiple_rectangle_rotated_scans # relative to build directory

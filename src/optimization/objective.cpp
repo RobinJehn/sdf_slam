@@ -77,16 +77,25 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
     fill_dMap(triplet_list, i, residual_factor, interpolation_indices, interpolation_weights);
 
     // dTransform
-    // Transformation 0 is fixed
-    const uint transformation_index = i / (point_value.size() / point_clouds_.size());
-    if (transformation_index == 0) {
+    // Scan 0 is fixed
+    // Recover the scan index. Scans are not necessarily the same size
+    uint scan_index = 0;
+    int a = 0;
+    for (uint j = 0; j < point_clouds_.size(); ++j) {
+      a += point_clouds_[j].size() * (objective_args_.scanline_points + 1);
+      if (i < a) {
+        scan_index = j;
+        break;
+      }
+    }
+    if (scan_index == 0) {
       continue;
     }
 
-    const auto dResidual_dTransform = compute_dResidual_dTransform<Dim>(
-        derivatives, point, state.transformations_[transformation_index]);
+    const auto dResidual_dTransform =
+        compute_dResidual_dTransform<Dim>(derivatives, point, state.transformations_[scan_index]);
 
-    const uint offset = total_map_points + (transformation_index - 1) * n_transformation_params_;
+    const uint offset = total_map_points + (scan_index - 1) * n_transformation_params_;
     fill_dTransform(triplet_list, i, residual_factor, offset, dResidual_dTransform);
   }
 

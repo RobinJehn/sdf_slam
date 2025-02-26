@@ -1,16 +1,22 @@
-output_directory: rectangle_scans
-number_of_scans: 2
-max_range: 5.0
+output_directory: multiple_rectangle_rotated_scans
+number_of_scans: 4
+max_range: 10.0
 num_points: 100
 angle_range: 0.785398
 initial_theta: 1.75708
-initial_position: [1, -5]
 delta_theta: 0
-delta_position: [1, 0]
+initial_position: [0.3, -5]
+delta_position: [0.2, 0]
 scene: 
   - type: "rectangle"
-    width: 1
-    height: 1
-    orientation: 0
-    center_x: 0
-    center_y: 0
+    width: 1.0
+    height: 1.0
+    orientation: 0.7
+    center_x: 0.0
+    center_y: 0.0
+  - type: "rectangle"
+    width: 1.0
+    height: 1.0
+    orientation: 0.7
+    center_x: 1.6
+    center_y: 0.0

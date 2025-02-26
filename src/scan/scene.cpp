@@ -59,12 +59,12 @@ Scene Scene::from_string(const std::string &str) {
   Scene scene;
   std::istringstream iss(str);
   std::string header;
-  int numShapes = 0;
-  iss >> header >> numShapes;  // Expect header "scene"
+  int num_shapes = 0;
+  iss >> header >> num_shapes;  // Expect header "scene"
   std::string dummy;
   std::getline(iss, dummy);  // consume rest of line
 
-  for (int i = 0; i < numShapes; ++i) {
+  for (int i = 0; i < num_shapes; ++i) {
     std::string line;
     std::getline(iss, line);
     if (line.empty()) continue;
@@ -72,11 +72,11 @@ Scene Scene::from_string(const std::string &str) {
     std::string type;
     lineStream >> type;
     std::shared_ptr<Shape> shape;
-    if (type == "Circle") {
+    if (type == "circle") {
       shape = Circle::from_string(line);
-    } else if (type == "Sinusoid") {
+    } else if (type == "sinusoid") {
       shape = Sinusoid::from_string(line);
-    } else if (type == "Rectangle") {
+    } else if (type == "rectangle") {
       shape = Rectangle::from_string(line);
     }
     if (shape) {
