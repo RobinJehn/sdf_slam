@@ -10,3 +10,12 @@ Started off implementing SDF SLAM for two simulated scans.
 - Implement Levenberg-Marquardt
 - Interesting observation: Because of the interpolation. If you are in the middle of -1 and 1, your value is 0. The same holds true if you are between -1000 and 1000. So sometimes you get alternating low and high grid values. I assume with |\nabla SDF| = 1 this will be gone. Furthermore I assume that this won't happen if there are multiple points in the same grid cell because they would be closer to one or the other extreme. So reducing grid size should also reduce this problem.
 - |\nabla SDF| = 1
+- Eikonal Equation only works if we project the derivative onto the surface normal. Also using central difference theorem doesn't work, it creates a chess pattern. Upwind difference theorem works, but needs to be projected onto the surface normal.
+- Looking at other smoothing techniques
+- Interesting result with Eikonal Equation and upwind difference. Depending on what I initialise the non-zero values to, The boundary causes problems or not.
+- Added being able to scan different user defined scenes
+- Forward difference works well.
+- Surface normals might not work for corners? Should it not just be the line to the closest point that defines the direction?
+- Doesn't seem to work well with a rectangle that isn't rotate where one scan hits the corner (2 sides) and the other just hits a flat (1 side). This is probably because of the inaccuracy in the point hallucination.
+- Get rid of assumption that scans are the same size
+- The scanline doesn't work well if it is at a sharp angle to the surface it hits. Should be easy to calculate how bad it is.

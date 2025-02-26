@@ -22,3 +22,35 @@ We somehow need to incorporate the information, that space a laser went through 
 
 
 We want the gradient to be 1 everywhere
+
+
+Why does central difference theorem produce the alternating pattern?
+
+9 9 9 9 9
+9 9 9 9 9
+9 9 0 9 9
+9 9 9 9 9
+9 9 9 9 9
+
+-1 -1 -1 -1 -1
+-1 -1  9 -1 -1
+-1 -9 -1  9 -1
+-1 -1 -9 -1 -1
+-1 -1 -1 -1 -1
+
+
+
+Maybe trying out a weighted central difference theorem could work?
+
+
+
+Thoughts on SLAM in general:
+
+Problems with graph SLAM:
+Graph grows linearly over time, so not ideal for use with the crane if we want to constantly run it.
+EKF SLAM for example doesn't have this limitation.
+
+
+Multi-Agent SLAM
+SLAM für jeden Sensor einzeln.
+Dann das Resultat mergen
