@@ -20,10 +20,11 @@ int main(int argc, char** argv) {
   }
 
   // Generate scans
-  Scene scene;
-  scene.add_shape(std::make_shared<Sinusoid>());
-  const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans =
-      create_scans(scene, scanner_positions, thetas);
+  YAML::Node config = YAML::LoadFile("../config/generate_scans.yml");
+  YAML::Node scene_config = config["scene"];
+  Scene scene = Scene::from_yaml(scene_config);
+  const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans = create_scans(
+      scene, scanner_positions, thetas, args.num_points, args.angle_range, args.max_range);
 
   const sfs::path base_dir = sfs::path("../data/") / args.output_directory;
   if (sfs::exists(base_dir)) {

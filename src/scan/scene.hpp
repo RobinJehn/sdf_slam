@@ -1,11 +1,13 @@
 #pragma once
 
+#include <yaml-cpp/yaml.h>
+
 #include <Eigen/Dense>
 #include <filesystem>
 #include <memory>
 #include <vector>
 
-#include "shape.hpp"
+#include "shape/shape.hpp"
 
 /**
  * @brief A scene that holds multiple shapes.
@@ -54,11 +56,22 @@ class Scene {
    *
    * The file should be formatted as "Shape1\nShape2\n...".
    *
-   * @param str The string to parse.
+   * @param path Path to the file.
    *
    * @return The Scene object.
    */
   static Scene from_file(const std::filesystem::path &path);
+
+  /**
+   * @brief Create a Scene from a yaml node.
+   *
+   * The file should be formatted as "Shape1\nShape2\n...".
+   *
+   * @param node The YAML node.
+   *
+   * @return The Scene object.
+   */
+  static Scene from_yaml(const YAML::Node &node);
 
  private:
   std::vector<std::shared_ptr<Shape>> shapes_;

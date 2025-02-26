@@ -7,7 +7,9 @@ set(MAP_SOURCES
 )
 
 set(SCAN_SOURCES
-    scan/shape.cpp
+    scan/shape/rectangle.cpp
+    scan/shape/sinusoid.cpp
+    scan/shape/circle.cpp
     scan/scene.cpp
     scan/scan.cpp
 )

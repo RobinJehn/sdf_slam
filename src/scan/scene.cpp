@@ -1,5 +1,7 @@
 #include "scene.hpp"
 
+#include <yaml-cpp/yaml.h>
+
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <cmath>
@@ -14,7 +16,9 @@
 #include <string>
 #include <vector>
 
-#include "shape.hpp"
+#include "shape/circle.hpp"
+#include "shape/rectangle.hpp"
+#include "shape/sinusoid.hpp"
 
 void Scene::add_shape(const std::shared_ptr<Shape> &shape) { shapes_.push_back(shape); }
 
@@ -44,7 +48,7 @@ const std::vector<std::shared_ptr<Shape>> &Scene::get_shapes() const { return sh
 
 std::string Scene::to_string() const {
   std::ostringstream oss;
-  oss << "Scene " << shapes_.size() << "\n";
+  oss << "scene " << shapes_.size() << "\n";
   for (const auto &shape : shapes_) {
     oss << shape->to_string() << "\n";
   }
@@ -56,7 +60,7 @@ Scene Scene::from_string(const std::string &str) {
   std::istringstream iss(str);
   std::string header;
   int numShapes = 0;
-  iss >> header >> numShapes;  // Expect header "Scene"
+  iss >> header >> numShapes;  // Expect header "scene"
   std::string dummy;
   std::getline(iss, dummy);  // consume rest of line
 
@@ -72,6 +76,27 @@ Scene Scene::from_string(const std::string &str) {
       shape = Circle::from_string(line);
     } else if (type == "Sinusoid") {
       shape = Sinusoid::from_string(line);
+    } else if (type == "Rectangle") {
+      shape = Rectangle::from_string(line);
+    }
+    if (shape) {
+      scene.add_shape(shape);
+    }
+  }
+  return scene;
+}
+
+Scene Scene::from_yaml(const YAML::Node &node) {
+  Scene scene;
+  for (const auto &shape_node : node) {
+    std::string type = shape_node["type"].as<std::string>();
+    std::shared_ptr<Shape> shape;
+    if (type == "circle") {
+      shape = Circle::from_yaml(shape_node);
+    } else if (type == "sinusoid") {
+      shape = Sinusoid::from_yaml(shape_node);
+    } else if (type == "rectangle") {
+      shape = Rectangle::from_yaml(shape_node);
     }
     if (shape) {
       scene.add_shape(shape);

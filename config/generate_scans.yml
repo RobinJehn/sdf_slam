@@ -1,6 +1,16 @@
-output_directory: scans
+output_directory: rectangle_scans
 number_of_scans: 2
+max_range: 5.0
+num_points: 100
+angle_range: 0.785398
 initial_theta: 1.75708
 initial_position: [1, -5]
 delta_theta: 0
 delta_position: [1, 0]
+scene: 
+  - type: "rectangle"
+    width: 1
+    height: 1
+    orientation: 0
+    center_x: 0
+    center_y: 0
