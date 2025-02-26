@@ -19,9 +19,8 @@ pcl::PointCloud<pcl::PointXY>::Ptr create_scan(const Scene &scene,
     Eigen::Vector2d intersection;
     bool hit = scene.intersect_ray(scanner_position, angle, intersection);
     if (!hit) {
-      // No hit: set the intersection at maximum range.
-      intersection =
-          scanner_position + max_range * Eigen::Vector2d(std::cos(angle), std::sin(angle));
+      // No hit: no point
+      continue;
     }
     pcl::PointXY pcl_point;
     pcl_point.x = intersection.x();

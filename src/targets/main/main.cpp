@@ -51,7 +51,8 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
                       const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                       const MapArgs<2> &map_args,
                       const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                      const OptimizationArgs &opt_args) {
+                      const OptimizationArgs &opt_args,  //
+                      const VisualizationArgs &vis_args) {
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
   double lambda = opt_args.initial_lambda;
@@ -110,7 +111,7 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
                 << std::endl;
     }
     if (opt_args.visualize) {
-      visualize_map(params, scans, map_args, initial_frame);
+      visualize_map(params, scans, map_args, initial_frame, vis_args);
     }
 
     // Free memory
@@ -142,10 +143,14 @@ int main() {
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
 
     // Visualize the initial map
-    visualize_map(params, point_clouds, args.map_args, scans.frames[0]);
+    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args);
 
     // Set up the objective functor for optimization
-    const int num_points = point_clouds[0].size() * point_clouds.size();
+    int num_points = 0;
+    for (const auto &cloud : point_clouds) {
+      num_points += cloud.size();
+    }
+
     const uint num_smoothing_residuals =
         args.objective_args.smoothness_derivative_type == DerivativeType::FORWARD
             ? (map.get_num_points(0) - 1) * (map.get_num_points(1) - 1)
@@ -159,11 +164,11 @@ int main() {
     cholmod_common c;
     cholmod_start(&c);
     run_optimization(functor, params, c, point_clouds, args.map_args, scans.frames[0],
-                     args.optimization_args);
+                     args.optimization_args, args.vis_args);
     cholmod_finish(&c);
 
     // Visualize the optimized map
-    visualize_map(params, point_clouds, args.map_args, scans.frames[0]);
+    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;

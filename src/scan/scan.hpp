@@ -10,7 +10,7 @@
 /**
  * @brief Create a simulated scan (a point cloud) in the scanner frame.
  *
- * If no shape is hit along a ray, a point at the maximum range is returned.
+ * If no shape is hit along a ray, no point is added to the scan.
  *
  * @param scene The scene to scan.
  * @param scanner_position The position of the scanner in 2D space.
