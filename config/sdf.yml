@@ -4,16 +4,16 @@ objective_args:
   both_directions: true
   scan_line_factor: 1.0
   scan_point_factor: 1.0
-  smoothness_factor: 0.1
+  smoothness_factor: 1.0
   smoothness_derivative_type: "FORWARD" #  FORWARD or UPWIND
 
 map_args:
   num_points: [40, 40]
   min_coords: [-3, -7]
-  max_coords: [4, 4] # 2 * M_PI + 3
+  max_coords: [4, 4]
 
 optimization_args:
-  max_iters: 500
+  max_iters: 5000
   initial_lambda: 1
   tolerance: 1e-3
   lambda_factor: 1
@@ -21,6 +21,6 @@ optimization_args:
   std_out: true
 
 general_args:
-  from_ground_truth: true
+  from_ground_truth: false
   initial_value: 3
   data_path: ../data/scans # relative to build directory

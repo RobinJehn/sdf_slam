@@ -14,14 +14,16 @@
 #include "optimization/objective.hpp"
 #include "optimization/optimizer.hpp"
 #include "optimization/utils.hpp"
-#include "scan/generate.hpp"
+#include "scan/scene.hpp"
+#include "scan/shape.hpp"
 #include "scan/utils.hpp"
 #include "state/state.hpp"
 #include "visualize/utils.hpp"
 
 // Converts Eigen::SparseMatrix to CHOLMOD sparse matrix
-void eigenToCholmod(const Eigen::SparseMatrix<double> &eigenMatrix, cholmod_sparse *&cholmodMatrix,
-                    cholmod_common &c) {
+void eigen_to_cholmod(const Eigen::SparseMatrix<double> &eigenMatrix,
+                      cholmod_sparse *&cholmodMatrix,  //
+                      cholmod_common &c) {
   cholmodMatrix = cholmod_allocate_sparse(eigenMatrix.rows(), eigenMatrix.cols(),
                                           eigenMatrix.nonZeros(), true, true, -1, CHOLMOD_REAL, &c);
   if (!cholmodMatrix) {
@@ -44,11 +46,12 @@ void eigenToCholmod(const Eigen::SparseMatrix<double> &eigenMatrix, cholmod_spar
 }
 
 // Runs the optimization process
-void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, cholmod_common &c,
-                     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-                     const MapArgs<2> &map_args,
-                     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                     const OptimizationArgs &opt_args) {
+void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
+                      cholmod_common &c,                                      //
+                      const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
+                      const MapArgs<2> &map_args,
+                      const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+                      const OptimizationArgs &opt_args) {
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
   double lambda = opt_args.initial_lambda;
@@ -78,7 +81,7 @@ void runOptimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params, chol
 
     // Cholesky factorization
     cholmod_sparse *lhs;
-    eigenToCholmod(lhs_eigen, lhs, c);
+    eigen_to_cholmod(lhs_eigen, lhs, c);
     cholmod_factor *lhs_factorised = cholmod_analyze(lhs, &c);
     cholmod_factorize(lhs, lhs_factorised, &c);
 
@@ -127,45 +130,15 @@ int main() {
     Scans scans = read_scans(args.general_args.data_path);
     const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = scans.scans;
 
-    // // ---- New Block: Convert 2D scan (PointXY) to 3D (PointXYZ) and visualize normals ----
-    // {
-    //   pcl::PointCloud<pcl::PointXY>::Ptr point_cloud_ptr(
-    //       new pcl::PointCloud<pcl::PointXY>(point_clouds[0]));
-    //   pcl::PointCloud<pcl::Normal>::Ptr norm_cloud = compute_normals<2>(point_cloud_ptr, 0.1);
-
-    //   // Convert the 2D cloud to a 3D cloud (with z = 0)
-    //   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud3d(new pcl::PointCloud<pcl::PointXYZ>);
-    //   for (const auto &pt : point_cloud_ptr->points) {
-    //     pcl::PointXYZ pt3d;
-    //     pt3d.x = pt.x;
-    //     pt3d.y = pt.y;
-    //     pt3d.z = 0;  // 2D data: z is set to zero
-    //     cloud3d->points.push_back(pt3d);
-    //   }
-    //   cloud3d->width = static_cast<uint32_t>(cloud3d->points.size());
-    //   cloud3d->height = 1;
-    //   cloud3d->is_dense = true;
-
-    //   // Set up the visualizer.
-    //   pcl::visualization::PCLVisualizer viewer("2D Normal Visualization");
-    //   viewer.setBackgroundColor(0.0, 0.0, 0.0);
-    //   viewer.addPointCloud<pcl::PointXYZ>(cloud3d, "scan");
-    //   // Visualize normals with a step of 1 and a scale factor of 10.0 (adjust as needed)
-    //   viewer.addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(cloud3d, norm_cloud, 1, 1.0,
-    //                                                           "normals");
-    //   viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4,
-    //                                           "scan");
-
-    //   // Main loop for the visualizer.
-    //   while (!viewer.wasStopped()) {
-    //     viewer.spinOnce(100);
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    //   }
-    // }
-
     // Initialize the map and set up the optimization parameters
-    Map<2> map = init_map(args.map_args, args.general_args.from_ground_truth,
-                          args.general_args.initial_value);
+    Map<2> map(args.map_args);
+    if (args.general_args.from_ground_truth) {
+      const std::filesystem::path scene_path = args.general_args.data_path / "scene_info.txt";
+      const Scene scene = Scene::from_file(scene_path);
+      map.from_ground_truth(scene);
+    } else {
+      map.set_value(args.general_args.initial_value);
+    }
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
 
     // Visualize the initial map
@@ -185,8 +158,8 @@ int main() {
     // Run the optimization process
     cholmod_common c;
     cholmod_start(&c);
-    runOptimization(functor, params, c, point_clouds, args.map_args, scans.frames[0],
-                    args.optimization_args);
+    run_optimization(functor, params, c, point_clouds, args.map_args, scans.frames[0],
+                     args.optimization_args);
     cholmod_finish(&c);
 
     // Visualize the optimized map

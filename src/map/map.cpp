@@ -111,6 +111,13 @@ void Map<Dim>::set_value_at(const index_t &index, const double value) {
 }
 
 template <int Dim>
+void Map<Dim>::set_value(const double value) {
+  for (auto &entry : grid_values_) {
+    entry.second = value;
+  }
+}
+
+template <int Dim>
 Map<Dim>::Vector Map<Dim>::get_location(const index_t &index) const {
   if constexpr (Dim == 2) {
     return Vector(index[0] * d_[0] + min_coords_.x(), index[1] * d_[1] + min_coords_.y());
@@ -206,6 +213,34 @@ std::array<Map<Dim>, Dim> Map<Dim>::df(const DerivativeType &type) const {
     return df_2d(*this, type);
   }
   static_assert(Dim == 2 || Dim == 3, "Dim must be 2 or 3");
+}
+
+template <>
+void Map<2>::from_ground_truth(const Scene &scene) {
+  // Get the shapes from the scene.
+  const auto &shapes = scene.get_shapes();
+
+  // Loop over each grid index.
+  for (int i = 0; i < num_points_[0]; ++i) {
+    for (int j = 0; j < num_points_[1]; ++j) {
+      std::array<int, 2> index = {i, j};
+      // Get the global coordinates for this grid point.
+      Eigen::Vector2d p = get_location(index);
+
+      // Initialize min_distance to a large number.
+      double min_distance = std::numeric_limits<double>::max();
+      // For each shape, compute the (signed) distance.
+      for (const auto &shape : shapes) {
+        double d = shape->distance(p);
+        // Choose the shape that minimizes the absolute distance.
+        if (std::abs(d) < std::abs(min_distance)) {
+          min_distance = d;
+        }
+      }
+      // Set the computed (signed) distance at this grid point.
+      set_value_at(index, min_distance);
+    }
+  }
 }
 
 // Explicit template instantiation

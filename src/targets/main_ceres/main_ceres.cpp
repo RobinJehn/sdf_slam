@@ -10,7 +10,8 @@
 #include "map/utils.hpp"
 #include "optimization/objective_ceres.hpp"
 #include "optimization/utils.hpp"
-#include "scan/generate.hpp"
+#include "scan/scene.hpp"
+#include "scan/shape.hpp"
 #include "state/state.hpp"
 
 // Helper function to plot a map with sine function overlay
@@ -87,7 +88,14 @@ int main(int argc, char *argv[]) {
   map_args.max_coords = Eigen::Vector2d(x_max, y_max);
 
   // Initialize the map
-  Map<2> map = init_map(map_args, true);
+  Map<2> map(args.map_args);
+  if (args.general_args.from_ground_truth) {
+    Scene scene;
+    scene.add_shape(std::make_shared<Sinusoid>());
+    map.from_ground_truth(scene);
+  } else {
+    map.set_value(args.general_args.initial_value);
+  }
 
   // Plot the initial map
   plot_map(map, map_size_x, map_size_y, x_min, x_max, y_min, y_max, "Initial Map");

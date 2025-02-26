@@ -7,7 +7,9 @@ set(MAP_SOURCES
 )
 
 set(SCAN_SOURCES
-    scan/generate.cpp
+    scan/shape.cpp
+    scan/scene.cpp
+    scan/scan.cpp
 )
 
 set(STATE_SOURCES

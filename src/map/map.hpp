@@ -4,6 +4,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include "scan/scene.hpp"
 #include "utils.hpp"
 
 enum class DerivativeType { CENTRAL, UPWIND, FORWARD };
@@ -65,7 +66,11 @@ class Map {
   double get_d(int dim) const { return d_[dim]; }
   std::array<double, Dim> get_d() const { return d_; }
 
-  void set_value_at(const index_t &index, const double value);
+  /** Set the value for a specific index */
+  void set_value_at(const index_t &index, double value);
+
+  /** Sets the value for all grid points */
+  void set_value(double value);
 
   /** Get the value at a certain grid point */
   double get_value_at(const index_t &index) const;
@@ -124,6 +129,8 @@ class Map {
    * @throws std::out_of_range if the point p is out of bounds
    */
   index_t get_grid_indices(const Vector &p) const;
+
+  void from_ground_truth(const Scene& scene);
 
  private:
   /** Values at grid points */

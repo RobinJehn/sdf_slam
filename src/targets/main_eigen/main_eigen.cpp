@@ -6,7 +6,6 @@
 #include "optimization/objective.hpp"
 #include "optimization/optimizer.hpp"
 #include "optimization/utils.hpp"
-#include "scan/generate.hpp"
 #include "state/state.hpp"
 
 int main(int argc, char *argv[]) {
