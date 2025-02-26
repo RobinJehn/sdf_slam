@@ -65,6 +65,12 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.optimization_args.visualize = config["optimization_args"]["visualize"].as<bool>();
   args.optimization_args.std_out = config["optimization_args"]["std_out"].as<bool>();
 
+  // Read visualization_args from YAML
+  args.vis_args.output_width = config["visualization_args"]["output_width"].as<int>();
+  args.vis_args.output_height = config["visualization_args"]["output_height"].as<int>();
+  args.vis_args.show_normals = config["visualization_args"]["show_normals"].as<bool>();
+  args.vis_args.show_points = config["visualization_args"]["show_points"].as<bool>();
+
   // Read general_args from YAML
   args.general_args.from_ground_truth = config["general_args"]["from_ground_truth"].as<bool>();
   args.general_args.initial_value = config["general_args"]["initial_value"].as<double>();

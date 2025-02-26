@@ -11,11 +11,19 @@ struct GeneralArgs {
   double initial_value = 0.0;       // Initial value for the map
 };
 
+struct VisualizationArgs {
+  bool show_points = true;   // Whether to show the points on the map
+  bool show_normals = true;  // Whether to show the normals on the map
+  int output_width = 1000;   // Width of the output image
+  int output_height = 1000;  // Height of the output image
+};
+
 template <int Dim>
 struct Args {
   MapArgs<Dim> map_args;
   ObjectiveArgs objective_args;
   OptimizationArgs optimization_args;
+  VisualizationArgs vis_args;
   GeneralArgs general_args;
 };
 

@@ -167,44 +167,28 @@ void onMouse(int event, int x, int y, int flags, void *userdata) {
   }
 }
 
-void display_map_with_points(const Eigen::MatrixXd &map,  //
-                             const std::vector<Eigen::Vector2d> &points,
-                             const Eigen::Vector2d &min_coords,  //
-                             const Eigen::Vector2d &max_coords,
-                             const int output_width,  //
-                             const int output_height) {
-  const Eigen::Vector2d image_size = Eigen::Vector2d(output_width, output_height);
+void display_map(const Eigen::MatrixXd &map,  //
+                 const Map<2> &map_map,       //
+                 const std::vector<Eigen::Vector2d> &points,
+                 const Eigen::Vector2d &min_coords,  //
+                 const Eigen::Vector2d &max_coords,
+                 const pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
+                 const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,  //
+                 const VisualizationArgs &vis_args) {
+  const Eigen::Vector2d image_size = Eigen::Vector2d(vis_args.output_width, vis_args.output_height);
   const Eigen::Vector2d map_size = max_coords - min_coords;
   const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
 
-  cv::Mat color_map_image = map_to_image(map, output_width, output_height);
-  overlay_points(color_map_image, points, min_coords, max_coords, scale);
+  cv::Mat color_map_image = map_to_image(map, vis_args.output_width, vis_args.output_height);
 
-  CallbackData data = {map, output_width, output_height};
-  cv::setMouseCallback("Map with Points", onMouse, &data);
-  cv::imshow("Map with Points", color_map_image);
-  cv::waitKey(0);
-}
+  if (vis_args.show_points) {
+    overlay_points(color_map_image, points, min_coords, max_coords, scale);
+  }
+  if (vis_args.show_normals) {
+    overlay_surface_normals(color_map_image, map_map, tree_global, normals_global, scale);
+  }
 
-void display_map_with_points_and_surface_normal(
-    const Eigen::MatrixXd &map,  //
-    const Map<2> &map_map,       //
-    const std::vector<Eigen::Vector2d> &points,
-    const Eigen::Vector2d &min_coords,  //
-    const Eigen::Vector2d &max_coords,
-    const int output_width,   //
-    const int output_height,  //
-    const pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global) {
-  const Eigen::Vector2d image_size = Eigen::Vector2d(output_width, output_height);
-  const Eigen::Vector2d map_size = max_coords - min_coords;
-  const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
-
-  cv::Mat color_map_image = map_to_image(map, output_width, output_height);
-  overlay_points(color_map_image, points, min_coords, max_coords, scale);
-  overlay_surface_normals(color_map_image, map_map, tree_global, normals_global, scale);
-
-  CallbackData data = {map, output_width, output_height};
+  CallbackData data = {map, vis_args.output_width, vis_args.output_height};
   cv::setMouseCallback("Map with Points", onMouse, &data);
   cv::imshow("Map with Points", color_map_image);
   cv::waitKey(0);
@@ -254,7 +238,7 @@ void visualize_map(const Eigen::VectorXd &params,
                    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                    const MapArgs<2> &map_args,
                    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                   const int output_width, const int output_height) {
+                   const VisualizationArgs &vis_args) {
   State<2> state = unflatten<2>(params, initial_frame, map_args);
 
   std::vector<Eigen::Vector2d> global_points =
@@ -277,11 +261,8 @@ void visualize_map(const Eigen::VectorXd &params,
       map(y, x) = std::max(-5.0, std::min(5.0, state.map_.get_value_at({x, y})));
     }
   }
-  // display_map_with_points(map, global_points, map_args.min_coords, map_args.max_coords,
-  //                         output_width, output_height);
-  display_map_with_points_and_surface_normal(map, state.map_, global_points, map_args.min_coords,
-                                             map_args.max_coords, output_width, output_height,
-                                             tree_global, normals_global);
+  display_map(map, state.map_, global_points, map_args.min_coords, map_args.max_coords, tree_global,
+              normals_global, vis_args);
 }
 
 // Explicit template instantiation for 2D points

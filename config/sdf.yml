@@ -20,6 +20,12 @@ optimization_args:
   visualize: true
   std_out: true
 
+visualization_args:
+  show_points: true
+  show_normals: true
+  output_height: 1000
+  output_width: 1000
+
 general_args:
   from_ground_truth: false
   initial_value: 3

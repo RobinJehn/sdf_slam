@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "config/utils.hpp"
 #include "map/utils.hpp"
 
 template <int Dim>
@@ -19,7 +20,7 @@ void visualize_map(const Eigen::VectorXd &params,
                    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                    const MapArgs<2> &map_args,
                    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                   const int output_width = 1000, const int output_height = 1000);
+                   const VisualizationArgs &vis_args);
 
 /**
  * @brief Display the map with the points drawn on it
@@ -28,12 +29,11 @@ void visualize_map(const Eigen::VectorXd &params,
  * @param points The points to draw on the map
  * @param min_coords The minimum coordinates of the map
  * @param max_coords The maximum coordinates of the map
- * @param output_width The width of the output image
- * @param output_height The height of the output image
+ * @param vis_args Visualization arguments
  */
-void display_map_with_points(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> &points,
-                             const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                             const int output_width = 1000, const int output_height = 1000);
+void display_map(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> &points,
+                 const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
+                 const VisualizationArgs &vis_args);
 
 /**
  * @brief Draw the points on the image
