@@ -40,6 +40,11 @@ int main(int argc, char** argv) {
   const sfs::path scanner_info_file_path = base_dir / "scanner_info.txt";
   std::ofstream scanner_info_file(scanner_info_file_path.string(), std::ios::app);
   for (size_t i = 0; i < scans.size(); ++i) {
+    if (scans[i]->empty()) {
+      std::cerr << "Scan " << i << " is empty and therefore ignored." << std::endl;
+      continue;
+    }
+
     std::ostringstream oss;
     oss << std::setw(std::to_string(scans.size() - 1).length()) << std::setfill('0') << i;
     const sfs::path scan_file = base_dir / ("scan" + oss.str() + ".pcd");
