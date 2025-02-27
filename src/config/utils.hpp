@@ -32,10 +32,19 @@ Args<Dim> setup_from_yaml(const std::filesystem::path &config_path);
 
 struct GenerateScanArgs {
   std::filesystem::path output_directory;
+
+  // Scan
   int number_of_scans;
   double angle_range;
   int num_points;
   double max_range;
+
+  // Scan Location
+  bool use_scan_locations;
+  std::vector<Eigen::Vector2d> scanner_positions;
+  std::vector<double> thetas;
+
+  // Location Generation
   double initial_theta;
   Eigen::Vector2d initial_position;
   double delta_theta;

@@ -29,4 +29,4 @@ visualization_args:
 general_args:
   from_ground_truth: true
   initial_value: 3
-  data_path: ../data/multiple_rectangle_rotated_scans # relative to build directory
+  data_path: ../data/many_scans # relative to build directory

@@ -116,6 +116,15 @@ GenerateScanArgs setup_generate_scan_args(const std::filesystem::path &config_pa
   args.num_points = config["num_points"].as<int>();
   args.max_range = config["max_range"].as<double>();
 
+  args.use_scan_locations = config["use_scan_locations"].as<bool>();
+  if (args.use_scan_locations) {
+    for (const auto &scan_location : config["scan_locations"]) {
+      args.scanner_positions.push_back(Eigen::Vector2d(scan_location["position"][0].as<double>(),
+                                                       scan_location["position"][1].as<double>()));
+      args.thetas.push_back(scan_location["theta"].as<double>());
+    }
+  }
+
   return args;
 }
 

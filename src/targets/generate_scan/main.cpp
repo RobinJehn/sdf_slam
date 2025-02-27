@@ -14,9 +14,14 @@ int main(int argc, char** argv) {
 
   std::vector<Eigen::Vector2d> scanner_positions;
   std::vector<double> thetas;
-  for (int i = 0; i < args.number_of_scans; ++i) {
-    scanner_positions.push_back(args.initial_position + i * args.delta_position);
-    thetas.push_back(args.initial_theta + i * args.delta_theta);
+  if (args.use_scan_locations) {
+    scanner_positions = args.scanner_positions;
+    thetas = args.thetas;
+  } else {
+    for (int i = 0; i < args.number_of_scans; ++i) {
+      scanner_positions.push_back(args.initial_position + i * args.delta_position);
+      thetas.push_back(args.initial_theta + i * args.delta_theta);
+    }
   }
 
   // Generate scans
@@ -35,7 +40,9 @@ int main(int argc, char** argv) {
   const sfs::path scanner_info_file_path = base_dir / "scanner_info.txt";
   std::ofstream scanner_info_file(scanner_info_file_path.string(), std::ios::app);
   for (size_t i = 0; i < scans.size(); ++i) {
-    const sfs::path scan_file = base_dir / ("scan" + std::to_string(i) + ".pcd");
+    std::ostringstream oss;
+    oss << std::setw(std::to_string(scans.size() - 1).length()) << std::setfill('0') << i;
+    const sfs::path scan_file = base_dir / ("scan" + oss.str() + ".pcd");
     pcl::io::savePCDFileASCII(scan_file.string(), *(scans[i]));
 
     if (scanner_info_file.is_open()) {

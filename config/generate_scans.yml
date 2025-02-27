@@ -1,12 +1,45 @@
-output_directory: multiple_rectangle_rotated_scans
-number_of_scans: 4
+output_directory: many_scans
+# Scans
 max_range: 10.0
 num_points: 100
 angle_range: 0.785398
-initial_theta: 1.75708
+
+# Locations
+use_scan_locations: true
+scan_locations:
+  - theta: 1.75
+    position: [0.5, -5]
+  - theta: 1.75
+    position: [1.0, -5]
+  - theta: 1.75
+    position: [1.5, -5]
+  - theta: 1.75
+    position: [2.0, -5]
+  - theta: 1.75
+    position: [2.5, -5]
+  - theta: 1.75
+    position: [3.0, -5]
+  - theta: 1.75
+    position: [3.5, -5]
+  - theta: 1.75
+    position: [4.0, -5]
+  - theta: 2.0
+    position: [4.0, -4]
+  - theta: 2.0
+    position: [4.0, -3]
+  - theta: 2.25
+    position: [4.0, -2]
+  - theta: 2.5
+    position: [4.0, -1]
+
+# Locations alternative
+number_of_scans: 4
+initial_theta: 1.75
 delta_theta: 0
 initial_position: [0.3, -5]
 delta_position: [0.2, 0]
+
+# Scene
 scene: 
   - type: "rectangle"
     width: 1.0
