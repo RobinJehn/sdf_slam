@@ -13,20 +13,23 @@
 
 struct ObjectiveArgs {
   // Scan lines
-  double scan_line_factor = 1;  // Factor by which to multiply the scan line
-                                // residuals
-  int scanline_points = 20;     // Number of points along the scan line
-  double step_size = 0.1;       // Step size between points
-  bool both_directions = true;  // Whether to add points in both directions
+  double scan_line_factor;  // Factor by which to multiply the scan line
+                            // residuals
+  int scanline_points;      // Number of points along the scan line
+  double step_size;         // Step size between points
+  bool both_directions;     // Whether to add points in both directions
 
   // Scan points
-  double scan_point_factor = 1;  // Factor by which to multiply the scan point
-                                 // residuals
+  double scan_point_factor;  // Factor by which to multiply the scan point
+                             // residuals
 
   // Map smoothness
-  double smoothness_factor = 1;  // Factor by which to multiply the smoothness
-                                 // term in the objective function
-  DerivativeType smoothness_derivative_type = DerivativeType::FORWARD;
+  double smoothness_factor;  // Factor by which to multiply the smoothness
+                             // term in the objective function
+  // Type of derivative approximation for smoothness term
+  DerivativeType smoothness_derivative_type;
+  bool project_derivative;  // Whether to project the derivative onto the
+                            // normal of the point
 };
 
 struct OptimizationArgs {

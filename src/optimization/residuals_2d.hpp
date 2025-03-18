@@ -22,13 +22,15 @@
  * @param tree_global A pointer to a k-d tree used for nearest neighbor search in the global map.
  * @param normals_global A pointer to a point cloud containing the normals of the global map.
  * @param type The type of derivative to compute
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
+ *
  * @return A vector of double values representing the computed smoothness residuals.
  */
 std::vector<double> compute_smoothness_residual_2d(
     const Map<2> &map, const double smoothness_factor,
     pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,  //
-    const DerivativeType &type);
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const DerivativeType &type,
+    const bool project_derivative);
 
 /**
  * @brief Computes the smoothness residuals in 2D using a forward difference method.
@@ -40,12 +42,14 @@ std::vector<double> compute_smoothness_residual_2d(
  * @param smoothness_factor A factor that scales the smoothness residuals.
  * @param tree_global A pointer to a KdTree used for nearest neighbor search in the global frame.
  * @param normals_global A pointer to a point cloud containing the normals in the global frame.
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
+ *
  * @return A vector of smoothness residuals.
  */
 std::vector<double> compute_smoothness_residual_2d_forward(
     const Map<2> &map, const double smoothness_factor,
     pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global);
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const bool project_derivative);
 
 /**
  * @brief Computes the smoothness residuals in 2D using the upwind method.
@@ -60,12 +64,14 @@ std::vector<double> compute_smoothness_residual_2d_forward(
  * @param tree_global A pointer to a KdTree used for nearest neighbor search in the global point
  * cloud.
  * @param normals_global A pointer to the point cloud containing the normals of the global points.
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
+ *
  * @return A vector of smoothness residuals.
  */
 std::vector<double> compute_smoothness_residual_2d_upwind(
     const Map<2> &map, const double smoothness_factor,
     pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global);
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const bool project_derivative);
 
 /**
  * @brief Computes the residuals for a 2D state given a set of point clouds and objective arguments.

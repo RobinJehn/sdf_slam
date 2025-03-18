@@ -14,13 +14,13 @@ std::vector<double> compute_smoothness_residual_2d(
     const Map<2> &map, const double smoothness_factor,
     pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
     const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,  //
-    const DerivativeType &type) {
+    const DerivativeType &type, const bool project_derivative) {
   if (type == DerivativeType::UPWIND) {
     return compute_smoothness_residual_2d_upwind(map, smoothness_factor, tree_global,
-                                                 normals_global);
+                                                 normals_global, project_derivative);
   } else if (type == DerivativeType::FORWARD) {
     return compute_smoothness_residual_2d_forward(map, smoothness_factor, tree_global,
-                                                  normals_global);
+                                                  normals_global, project_derivative);
   } else {
     throw std::runtime_error("Invalid derivative type.");
   }
@@ -29,7 +29,7 @@ std::vector<double> compute_smoothness_residual_2d(
 std::vector<double> compute_smoothness_residual_2d_upwind(
     const Map<2> &map, const double smoothness_factor,
     pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global) {
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const bool project_derivative) {
   // Retrieve the derivative maps (for x and y).
   const std::array<Map<2>, 2> derivatives = map.df(DerivativeType::UPWIND);
 
@@ -44,35 +44,40 @@ std::vector<double> compute_smoothness_residual_2d_upwind(
   // Loop over each grid point.
   for (int i = 0; i < num_x; i++) {
     for (int j = 0; j < num_y; j++) {
-      // Get the surface normal at the grid point.
-      const typename Map<2>::index_t index = {i, j};
-      const typename Map<2>::Vector grid_pt = map.get_location(index);
-      pcl::PointXY grid_pt_pcl;
-      grid_pt_pcl.x = grid_pt.x();
-      grid_pt_pcl.y = grid_pt.y();
-
-      std::vector<int> nn_indices;
-      std::vector<float> nn_dists;
-      tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
-      if (nn_indices.empty()) {
-        continue;
-      }
-      const pcl::Normal n = normals_global->points[nn_indices[0]];
-
       // Extract the partial derivatives.
+      const typename Map<2>::index_t index = {i, j};
       const double dDdx = derivatives[0].get_value_at(index);
       const double dDdy = derivatives[1].get_value_at(index);
 
-      // Normalize the scan normal.
-      const double norm_val = std::sqrt(n.normal_x * n.normal_x + n.normal_y * n.normal_y);
-      const double sn_x = (norm_val > 1e-6) ? n.normal_x / norm_val : 0.0;
-      const double sn_y = (norm_val > 1e-6) ? n.normal_y / norm_val : 0.0;
+      double grad_magnitude;
+      if (project_derivative) {
+        // Get the surface normal at the grid point.
+        const typename Map<2>::Vector grid_pt = map.get_location(index);
+        pcl::PointXY grid_pt_pcl;
+        grid_pt_pcl.x = grid_pt.x();
+        grid_pt_pcl.y = grid_pt.y();
 
-      // Project the grid gradient onto the surface normal.
-      double grad_dot_normal = dDdx * sn_x + dDdy * sn_y;
+        std::vector<int> nn_indices;
+        std::vector<float> nn_dists;
+        tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
+        if (nn_indices.empty()) {
+          continue;
+        }
+        const pcl::Normal n = normals_global->points[nn_indices[0]];
+
+        // Normalize the scan normal.
+        const double norm_val = std::sqrt(n.normal_x * n.normal_x + n.normal_y * n.normal_y);
+        const double sn_x = (norm_val > 1e-6) ? n.normal_x / norm_val : 0.0;
+        const double sn_y = (norm_val > 1e-6) ? n.normal_y / norm_val : 0.0;
+
+        // Project the grid gradient onto the surface normal.
+        grad_magnitude = dDdx * sn_x + dDdy * sn_y;
+      } else {
+        grad_magnitude = std::sqrt(dDdx * dDdx + dDdy * dDdy);
+      }
 
       // Compute the residual for this grid point.
-      const double point_residual = grad_dot_normal - 1.0;
+      const double point_residual = grad_magnitude - 1.0;
 
       // Scale the residual by the smoothness factor.
       residuals[i * num_y + j] = smoothness_factor * point_residual;
@@ -85,7 +90,7 @@ std::vector<double> compute_smoothness_residual_2d_upwind(
 std::vector<double> compute_smoothness_residual_2d_forward(
     const Map<2> &map, const double smoothness_factor,
     pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
-    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global) {
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const bool project_derivative) {
   // Retrieve the derivative maps (for x and y).
   const std::array<Map<2>, 2> derivatives = map.df(DerivativeType::FORWARD);
 
@@ -101,35 +106,40 @@ std::vector<double> compute_smoothness_residual_2d_forward(
   // Loop over each grid point.
   for (int i = 0; i < num_x - 1; i++) {
     for (int j = 0; j < num_y - 1; j++) {
-      // Get the surface normal at the grid point.
-      const typename Map<2>::index_t index = {i, j};
-      const typename Map<2>::Vector grid_pt = map.get_location(index);
-      pcl::PointXY grid_pt_pcl;
-      grid_pt_pcl.x = grid_pt.x();
-      grid_pt_pcl.y = grid_pt.y();
-
-      std::vector<int> nn_indices;
-      std::vector<float> nn_dists;
-      tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
-      if (nn_indices.empty()) {
-        continue;
-      }
-      const pcl::Normal n = normals_global->points[nn_indices[0]];
-
       // Extract the partial derivatives.
+      const typename Map<2>::index_t index = {i, j};
       const double dDdx = derivatives[0].get_value_at(index);
       const double dDdy = derivatives[1].get_value_at(index);
 
-      // Normalize the scan normal.
-      const double norm_val = std::sqrt(n.normal_x * n.normal_x + n.normal_y * n.normal_y);
-      const double sn_x = (norm_val > 1e-6) ? n.normal_x / norm_val : 0.0;
-      const double sn_y = (norm_val > 1e-6) ? n.normal_y / norm_val : 0.0;
+      double grad_magnitude;
+      if (project_derivative) {
+        // Get the surface normal at the grid point.
+        const typename Map<2>::Vector grid_pt = map.get_location(index);
+        pcl::PointXY grid_pt_pcl;
+        grid_pt_pcl.x = grid_pt.x();
+        grid_pt_pcl.y = grid_pt.y();
 
-      // Project the grid gradient onto the surface normal.
-      double grad_dot_normal = dDdx * sn_x + dDdy * sn_y;
+        std::vector<int> nn_indices;
+        std::vector<float> nn_dists;
+        tree_global->nearestKSearch(grid_pt_pcl, 1, nn_indices, nn_dists);
+        if (nn_indices.empty()) {
+          continue;
+        }
+        const pcl::Normal n = normals_global->points[nn_indices[0]];
+
+        // Normalize the scan normal.
+        const double norm_val = std::sqrt(n.normal_x * n.normal_x + n.normal_y * n.normal_y);
+        const double sn_x = (norm_val > 1e-6) ? n.normal_x / norm_val : 0.0;
+        const double sn_y = (norm_val > 1e-6) ? n.normal_y / norm_val : 0.0;
+
+        // Project the grid gradient onto the surface normal.
+        grad_magnitude = dDdx * sn_x + dDdy * sn_y;
+      } else {
+        grad_magnitude = std::sqrt(dDdx * dDdx + dDdy * dDdy);
+      }
 
       // Compute the residual for this grid point.
-      const double point_residual = grad_dot_normal - 1.0;
+      const double point_residual = grad_magnitude - 1.0;
 
       // Scale the residual by the smoothness factor.
       residuals[i * (num_y - 1) + j] = smoothness_factor * point_residual;
@@ -179,7 +189,7 @@ Eigen::VectorXd compute_residuals_2d(const State<2> &state,
 
   const std::vector<double> smoothing_residuals =
       compute_smoothness_residual_2d(state.map_, objective_args.smoothness_factor, tree_global,
-                                     normals_global, objective_args.smoothness_derivative_type);
+                                     normals_global, objective_args.smoothness_derivative_type, objective_args.project_derivative);
 
   for (int i = 0; i < smoothing_residuals.size(); ++i) {
     residuals(point_value.size() + i) = smoothing_residuals[i];

@@ -114,7 +114,8 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
 
     fill_dSmoothness_dMap_2d(state.map_, objective_args_.smoothness_factor, tree_global,
                              normals_global, triplet_list, point_value.size(),
-                             objective_args_.smoothness_derivative_type);
+                             objective_args_.smoothness_derivative_type,
+                             objective_args_.project_derivative);
   } else {
     fill_dRoughness_dMap(triplet_list, derivatives, objective_args_.smoothness_factor);
   }

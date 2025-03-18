@@ -18,12 +18,14 @@
  * @param map The 2D map for which the smoothness derivative is to be calculated.
  * @param smoothness_factor A factor that scales the smoothness term. Higher values enforce
  *        stronger smoothness constraints.
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
  */
 void fill_dSmoothness_dMap_2d_upwind(const Map<2> &map, const double smoothness_factor,
                                      pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
                                      const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
                                      std::vector<Eigen::Triplet<double>> &triplet_list,
-                                     const int residual_index_offset);
+                                     const int residual_index_offset,
+                                     const bool project_derivative);
 
 /**
  * @brief Computes the smoothness derivative of a 2D map and fills the triplet list with the
@@ -40,12 +42,14 @@ void fill_dSmoothness_dMap_2d_upwind(const Map<2> &map, const double smoothness_
  * @param triplet_list A reference to a list of Eigen triplets where the results will be stored.
  * @param residual_index_offset An offset for the residual index to correctly place the results in
  * the triplet list.
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
  */
 void fill_dSmoothness_dMap_2d_forward(const Map<2> &map, const double smoothness_factor,
                                       pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
                                       const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
                                       std::vector<Eigen::Triplet<double>> &triplet_list,
-                                      const int residual_index_offset);
+                                      const int residual_index_offset,
+                                      const bool project_derivative);
 
 /**
  * @brief Fills the triplet list with the derivatives of the smoothness term with respect to the map
@@ -64,9 +68,11 @@ void fill_dSmoothness_dMap_2d_forward(const Map<2> &map, const double smoothness
  * be stored.
  * @param residual_index_offset The offset for the residual index.
  * @param type The type of derivative to be computed.
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
  */
 void fill_dSmoothness_dMap_2d(const Map<2> &map, const double smoothness_factor,
                               pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
                               const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,
                               std::vector<Eigen::Triplet<double>> &triplet_list,
-                              const int residual_index_offset, const DerivativeType type);
+                              const int residual_index_offset, const DerivativeType type,
+                              const bool project_derivative);

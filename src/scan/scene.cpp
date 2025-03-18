@@ -78,6 +78,8 @@ Scene Scene::from_string(const std::string &str) {
       shape = Sinusoid::from_string(line);
     } else if (type == "rectangle") {
       shape = Rectangle::from_string(line);
+    } else {
+      throw std::runtime_error("Invalid shape type.");
     }
     if (shape) {
       scene.add_shape(shape);
@@ -97,6 +99,8 @@ Scene Scene::from_yaml(const YAML::Node &node) {
       shape = Sinusoid::from_yaml(shape_node);
     } else if (type == "rectangle") {
       shape = Rectangle::from_yaml(shape_node);
+    } else {
+      throw std::runtime_error("Invalid shape type.");
     }
     if (shape) {
       scene.add_shape(shape);

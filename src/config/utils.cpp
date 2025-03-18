@@ -25,6 +25,8 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
       config["objective_args"]["scan_point_factor"].as<double>();
   args.objective_args.smoothness_factor =
       config["objective_args"]["smoothness_factor"].as<double>();
+  args.objective_args.project_derivative =
+      config["objective_args"]["project_derivative"].as<bool>();
 
   const std::string smoothness_derivative_type =
       config["objective_args"]["smoothness_derivative_type"].as<std::string>();
