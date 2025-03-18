@@ -72,6 +72,9 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.vis_args.output_height = config["visualization_args"]["output_height"].as<int>();
   args.vis_args.show_normals = config["visualization_args"]["show_normals"].as<bool>();
   args.vis_args.show_points = config["visualization_args"]["show_points"].as<bool>();
+  args.vis_args.clamp_colour_map = config["visualization_args"]["clamp_colour_map"].as<bool>();
+  args.vis_args.min_value = config["visualization_args"]["min_value"].as<double>();
+  args.vis_args.max_value = config["visualization_args"]["max_value"].as<double>();
 
   // Read general_args from YAML
   args.general_args.from_ground_truth = config["general_args"]["from_ground_truth"].as<bool>();

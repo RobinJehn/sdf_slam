@@ -12,10 +12,14 @@ struct GeneralArgs {
 };
 
 struct VisualizationArgs {
-  bool show_points = true;   // Whether to show the points on the map
-  bool show_normals = true;  // Whether to show the normals on the map
-  int output_width = 1000;   // Width of the output image
-  int output_height = 1000;  // Height of the output image
+  bool show_points;       // Whether to show the points on the map
+  bool show_normals;      // Whether to show the normals on the map
+  int output_width;       // Width of the output image
+  int output_height;      // Height of the output image
+  bool clamp_colour_map;  // Whether to clamp the colour map or make it relative to min and max in
+                          // the specific image
+  double min_value;       // Minimum value for the color map
+  double max_value;       // Maximum value for the color map
 };
 
 template <int Dim>

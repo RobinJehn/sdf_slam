@@ -187,9 +187,9 @@ Eigen::VectorXd compute_residuals_2d(const State<2> &state,
   const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
       compute_normals_global_2d(scans, state.transformations_);
 
-  const std::vector<double> smoothing_residuals =
-      compute_smoothness_residual_2d(state.map_, objective_args.smoothness_factor, tree_global,
-                                     normals_global, objective_args.smoothness_derivative_type, objective_args.project_derivative);
+  const std::vector<double> smoothing_residuals = compute_smoothness_residual_2d(
+      state.map_, objective_args.smoothness_factor, tree_global, normals_global,
+      objective_args.smoothness_derivative_type, objective_args.project_derivative);
 
   for (int i = 0; i < smoothing_residuals.size(); ++i) {
     residuals(point_value.size() + i) = smoothing_residuals[i];

@@ -60,12 +60,22 @@ void plotPointsWithValuesPCL(
   }
 }
 
-cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_height) {
+cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_height,
+                     const bool clamp_colour_map, double min_value, double max_value) {
   cv::Mat map_image(output_height, output_width, CV_8UC1);
-  const double min_value = map.minCoeff();
-  const double max_value = map.maxCoeff();
   const int map_points_x = map.cols();
   const int map_points_y = map.rows();
+
+  // Determine min and max values for color scaling
+  if (!clamp_colour_map) {
+    min_value = map.minCoeff();
+    max_value = map.maxCoeff();
+  }
+
+  // Ensure that the min and max values are different
+  if (max_value == min_value) {
+    max_value = min_value + 1;
+  }
 
   // Fill map_image by sampling and scaling map data
   for (int idx_x = 0; idx_x < output_width; ++idx_x) {
@@ -78,9 +88,10 @@ cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_he
                                              static_cast<double>(output_height));
       // (row, col)
       const double value = map(map_idx_y, map_idx_x);
+      const double value_clamped = std::clamp(value, min_value, max_value);
       // .at(row, col)
       map_image.at<uchar>(idx_y, idx_x) =
-          static_cast<uchar>(255 * (value - min_value) / (max_value - min_value));
+          static_cast<uchar>(255 * (value_clamped - min_value) / (max_value - min_value));
     }
   }
 
@@ -179,7 +190,9 @@ void display_map(const Eigen::MatrixXd &map,  //
   const Eigen::Vector2d map_size = max_coords - min_coords;
   const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
 
-  cv::Mat color_map_image = map_to_image(map, vis_args.output_width, vis_args.output_height);
+  cv::Mat color_map_image =
+      map_to_image(map, vis_args.output_width, vis_args.output_height, vis_args.clamp_colour_map,
+                   vis_args.min_value, vis_args.max_value);
 
   if (vis_args.show_points) {
     overlay_points(color_map_image, points, min_coords, max_coords, scale);
@@ -258,7 +271,7 @@ void visualize_map(const Eigen::VectorXd &params,
   for (int x = 0; x < map_args.num_points[0]; ++x) {
     for (int y = 0; y < map_args.num_points[1]; ++y) {
       // (row, column) row is y, column is x
-      map(y, x) = std::max(-5.0, std::min(5.0, state.map_.get_value_at({x, y})));
+      map(y, x) = state.map_.get_value_at({x, y});
     }
   }
   display_map(map, state.map_, global_points, map_args.min_coords, map_args.max_coords, tree_global,

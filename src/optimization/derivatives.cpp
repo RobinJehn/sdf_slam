@@ -203,6 +203,10 @@ void fill_dSmoothness_dMap_2d_forward(const Map<2> &map, const double smoothness
         const double dDdx = derivatives[0].get_value_at(index);
         const double dDdy = derivatives[1].get_value_at(index);
         const double grad_magnitude = std::sqrt(dDdx * dDdx + dDdy * dDdy);
+        if (grad_magnitude == 0.0) {
+          continue;
+        }
+
         const double dGradMagdgradx = dDdx / grad_magnitude;
         const double dGradMagdgrady = dDdy / grad_magnitude;
 

@@ -6,7 +6,7 @@ objective_args:
   scan_point_factor: 1.0
   smoothness_factor: 1.0
   smoothness_derivative_type: "FORWARD" #  FORWARD or UPWIND
-  project_derivative: false
+  project_derivative: true
 
 map_args:
   num_points: [40, 40]
@@ -26,8 +26,11 @@ visualization_args:
   show_normals: true
   output_height: 1000
   output_width: 1000
+  clamp_colour_map: true
+  min_value: -5
+  max_value: 5
 
 general_args:
   from_ground_truth: false
   initial_value: 3
-  data_path: ../data/rectangle_rotated_scans # relative to build directory
+  data_path: ../data/scans # relative to build directory
