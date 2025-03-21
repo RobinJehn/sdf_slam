@@ -52,6 +52,25 @@ std::vector<double> compute_smoothness_residual_2d_forward(
     const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const bool project_derivative);
 
 /**
+ * @brief Computes the smoothness residuals in 2D using a central difference method.
+ *
+ * This function calculates the smoothness residuals for a given 2D map. The smoothness
+ * residuals are used to enforce smoothness constraints in the optimization process.
+ *
+ * @param map The 2D map for which the smoothness residuals are computed.
+ * @param smoothness_factor A factor that scales the smoothness residuals.
+ * @param tree_global A pointer to a KdTree used for nearest neighbor search in the global frame.
+ * @param normals_global A pointer to a point cloud containing the normals in the global frame.
+ * @param project_derivative Whether to project the derivative onto the normal of the point.
+ *
+ * @return A vector of smoothness residuals.
+ */
+std::vector<double> compute_smoothness_residual_2d_central(
+    const Map<2> &map, const double smoothness_factor,
+    pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
+    const pcl::PointCloud<pcl::Normal>::Ptr &normals_global, const bool project_derivative);
+
+/**
  * @brief Computes the smoothness residuals in 2D using the upwind method.
  *
  * This function calculates the smoothness residuals for a given 2D map. The smoothness residuals

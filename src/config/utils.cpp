@@ -34,6 +34,8 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
     args.objective_args.smoothness_derivative_type = DerivativeType::UPWIND;
   } else if (smoothness_derivative_type == "FORWARD") {
     args.objective_args.smoothness_derivative_type = DerivativeType::FORWARD;
+  } else if (smoothness_derivative_type == "CENTRAL") {
+    args.objective_args.smoothness_derivative_type = DerivativeType::CENTRAL;
   } else {
     throw std::runtime_error("Invalid smoothness_derivative_type.");
   }
