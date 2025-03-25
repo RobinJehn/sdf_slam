@@ -20,7 +20,8 @@ void visualize_map(const Eigen::VectorXd &params,
                    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                    const MapArgs<2> &map_args,
                    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                   const VisualizationArgs &vis_args);
+                   const VisualizationArgs &vis_args, const ObjectiveArgs &objective_args,
+                   bool visualize, bool save_file, const std::string &exp_name = "");
 
 /**
  * @brief Display the map with the points drawn on it
@@ -31,10 +32,14 @@ void visualize_map(const Eigen::VectorXd &params,
  * @param min_coords The minimum coordinates of the map
  * @param max_coords The maximum coordinates of the map
  * @param vis_args Visualization arguments
+ * @param visualize Whether to display the image
+ * @param save_file Whether to save the image to a file
+ * @param exp_name The name of the experiment
  */
 void display_map(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> &points,
                  const std::vector<Eigen::Vector2d> &path_points, const Eigen::Vector2d &min_coords,
-                 const Eigen::Vector2d &max_coords, const VisualizationArgs &vis_args);
+                 const Eigen::Vector2d &max_coords, const VisualizationArgs &vis_args,
+                 bool visualize, bool save_file, const std::string &exp_name);
 
 /**
  * @brief Draw the points on the image

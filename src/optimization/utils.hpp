@@ -30,19 +30,21 @@ struct ObjectiveArgs {
                                               // term
   bool project_derivative;                    // Whether to project the derivative onto the
                                               // normal of the point
+  int normal_knn;               // Number of nearest neighbours to use for normal estimation
+  double normal_search_radius;  // Radius to search for nearest neighbours. If set to 0, the
+                                // normal_knn parameter is used instead.
 
   // Odometry
   double odometry_factor;  // Factor by which to multiply the odometry residuals
 };
 
 struct OptimizationArgs {
-  int max_iters = 20;         // Maximum number of iterations
-  double initial_lambda = 1;  // Initial lambda in Levenberg-Marquardt
-  double lambda_factor = 1;   // Factor by which lambda is multiplied or divided
-                              // each iteration
-  double tolerance = 1e-3;    // Tolerance for stopping criteria
-  bool visualize = false;     // Whether to visualize the map on each iteration
-  bool std_out = true;        // Whether to print to stdout
+  int max_iters;          // Maximum number of iterations
+  double initial_lambda;  // Initial lambda in Levenberg-Marquardt
+  double lambda_factor;   // Factor by which lambda is multiplied or divided
+                          // each iteration
+  double tolerance;       // Tolerance for stopping criteria
+  bool std_out;           // Whether to print to stdout
 };
 
 /**
@@ -325,12 +327,16 @@ std::vector<double> compute_dRoughness_dMap(const std::array<Map<Dim>, Dim> &map
  * towards the origin.
  *
  * @param cloud A pointer to the input point cloud
- * @param search_radius The radius used for the nearest neighbor search.
+ * @param search_radius If different from zero, the normal estimation will use the radius to find
+ * out which points it take for line estimation.
+ *
+ * @param k If different from zero, the normal estimation will find the kth closest points for
+ * computing line estimation.
  *
  * @return A pointer to the computed normals
  */
 pcl::PointCloud<pcl::Normal>::Ptr compute_normals_2d(
-    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud, double search_radius = 0.2);
+    const pcl::PointCloud<pcl::PointXY>::Ptr &cloud, double search_radius = 0, int k = 3);
 
 /**
  * @brief Computes the normals of a 3D point cloud.
@@ -459,12 +465,17 @@ pcl::PointCloud<pcl::Normal>::Ptr local_to_global_normals_2d(
  * @param scans A vector of shared pointers to 2D point clouds (pcl::PointCloud<pcl::PointXY>::Ptr).
  * @param transformations A vector of 2D affine transformations (Eigen::Transform<double, 2,
  * Eigen::Affine>) that represent the pose of each point cloud in the global coordinate frame.
+ * @param search_radius The radius used for the neighborhood search to compute the normals. If set
+ * to zero, the k parameter is used instead.
+ * @param k The number of nearest neighbors to use for normal estimation.
+ *
  * @return A shared pointer to a point cloud of normals (pcl::PointCloud<pcl::Normal>::Ptr) computed
  *         for the input point clouds in the global coordinate frame.
  */
 pcl::PointCloud<pcl::Normal>::Ptr compute_normals_global_2d(
     const std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> &scans,
-    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations);
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    double search_radius, int k);
 
 /**
  * @brief Converts a vector of pcl::PointCloud<pcl::PointXY> to a vector of

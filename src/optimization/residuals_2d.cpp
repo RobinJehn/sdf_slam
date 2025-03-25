@@ -300,7 +300,8 @@ Eigen::VectorXd compute_residuals_2d(
   // Global normals
   std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans = cloud_to_cloud_ptr(point_clouds);
   const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
-      compute_normals_global_2d(scans, state.transformations_);
+      compute_normals_global_2d(scans, state.transformations_, objective_args.normal_search_radius,
+                                objective_args.normal_knn);
 
   const std::vector<double> smoothing_residuals = compute_smoothness_residual_2d(
       state.map_, objective_args.smoothness_factor, tree_global, normals_global,

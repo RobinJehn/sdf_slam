@@ -27,6 +27,9 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
       config["objective_args"]["smoothness_factor"].as<double>();
   args.objective_args.project_derivative =
       config["objective_args"]["project_derivative"].as<bool>();
+  args.objective_args.normal_knn = config["objective_args"]["normal_knn"].as<int>();
+  args.objective_args.normal_search_radius =
+      config["objective_args"]["normal_search_radius"].as<double>();
 
   args.objective_args.odometry_factor = config["objective_args"]["odometry_factor"].as<double>();
 
@@ -68,7 +71,6 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
       config["optimization_args"]["initial_lambda"].as<double>();
   args.optimization_args.tolerance = config["optimization_args"]["tolerance"].as<double>();
   args.optimization_args.lambda_factor = config["optimization_args"]["lambda_factor"].as<double>();
-  args.optimization_args.visualize = config["optimization_args"]["visualize"].as<bool>();
   args.optimization_args.std_out = config["optimization_args"]["std_out"].as<bool>();
 
   // Read visualization_args from YAML
@@ -80,6 +82,9 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.vis_args.min_value = config["visualization_args"]["min_value"].as<double>();
   args.vis_args.max_value = config["visualization_args"]["max_value"].as<double>();
   args.vis_args.show_path = config["visualization_args"]["show_path"].as<bool>();
+  args.vis_args.save_file = config["visualization_args"]["save_file"].as<bool>();
+  args.vis_args.visualize = config["visualization_args"]["visualize"].as<bool>();
+  args.vis_args.initial_visualization = config["visualization_args"]["initial_visualization"].as<bool>();
 
   // Read general_args from YAML
   args.general_args.from_ground_truth = config["general_args"]["from_ground_truth"].as<bool>();

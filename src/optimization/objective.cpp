@@ -112,7 +112,8 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
     // Global normals
     std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans = cloud_to_cloud_ptr(point_clouds_);
     const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
-        compute_normals_global_2d(scans, state.transformations_);
+        compute_normals_global_2d(scans, state.transformations_,
+                                  objective_args_.normal_search_radius, objective_args_.normal_knn);
 
     fill_dSmoothness_dMap_2d(state.map_, objective_args_.smoothness_factor, tree_global,
                              normals_global, triplet_list, point_value.size(),

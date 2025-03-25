@@ -51,8 +51,10 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
                       const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                       const MapArgs<2> &map_args,
                       const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                      const OptimizationArgs &opt_args,  //
-                      const VisualizationArgs &vis_args) {
+                      const OptimizationArgs &opt_args,   //
+                      const VisualizationArgs &vis_args,  //
+                      const ObjectiveArgs &obj_args,      //
+                      const std::string &exp_name) {
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
   double lambda = opt_args.initial_lambda;
@@ -110,8 +112,9 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
       std::cout << "Iteration: " << iter << " Error: " << error << " Update Norm: " << update_norm
                 << std::endl;
     }
-    if (opt_args.visualize) {
-      visualize_map(params, scans, map_args, initial_frame, vis_args);
+    if (vis_args.visualize || vis_args.save_file) {
+      visualize_map(params, scans, map_args, initial_frame, vis_args, obj_args, vis_args.visualize,
+                    vis_args.save_file, exp_name);
     }
 
     // Free memory
@@ -143,7 +146,9 @@ int main() {
     Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
 
     // Visualize the initial map
-    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args);
+    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args,
+                  args.objective_args, /* visualize*/ args.vis_args.initial_visualization,
+                  /* save_file */ false);
 
     // Set up the objective functor for optimization
     int num_points = 0;
@@ -179,14 +184,42 @@ int main() {
                                 args.objective_args, scans.frames[0]);
 
     // Run the optimization process
+    const ObjectiveArgs &obj_args = args.objective_args;
+    std::string exp_name =
+        "experiment_" +
+        std::to_string(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+
+    std::filesystem::create_directories(exp_name);
+    // Save the parameters to a YAML file
+    std::ofstream yaml_file(exp_name + "/params.yml");
+    yaml_file << "scan_line_factor: " << obj_args.scan_line_factor << "\n";
+    yaml_file << "scanline_points: " << obj_args.scanline_points << "\n";
+    yaml_file << "step_size: " << obj_args.step_size << "\n";
+    yaml_file << "both_directions: " << obj_args.both_directions << "\n";
+    yaml_file << "scan_point_factor: " << obj_args.scan_point_factor << "\n";
+    yaml_file << "smoothness_factor: " << obj_args.smoothness_factor << "\n";
+    yaml_file << "smoothness_derivative_type: "
+              << static_cast<int>(obj_args.smoothness_derivative_type) << "\n";
+    yaml_file << "project_derivative: " << obj_args.project_derivative << "\n";
+    yaml_file << "normal_knn: " << obj_args.normal_knn << "\n";
+    yaml_file << "normal_search_radius: " << obj_args.normal_search_radius << "\n";
+    yaml_file << "odometry_factor: " << obj_args.odometry_factor << "\n";
+    yaml_file << "initial_lambda: " << args.optimization_args.initial_lambda << "\n";
+    yaml_file << "lambda_factor: " << args.optimization_args.lambda_factor << "\n";
+    yaml_file << "max_iters: " << args.optimization_args.max_iters << "\n";
+    yaml_file << "tolerance: " << args.optimization_args.tolerance << "\n";
+    yaml_file << "std_out: " << args.optimization_args.std_out << "\n";
+    yaml_file.close();
+
     cholmod_common c;
     cholmod_start(&c);
     run_optimization(functor, params, c, point_clouds, args.map_args, scans.frames[0],
-                     args.optimization_args, args.vis_args);
+                     args.optimization_args, args.vis_args, args.objective_args, exp_name);
     cholmod_finish(&c);
 
     // Visualize the optimized map
-    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args);
+    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args,
+                  args.objective_args, /* visualize*/ true, /* save_file */ true, exp_name);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;

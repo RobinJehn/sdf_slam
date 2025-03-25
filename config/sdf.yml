@@ -7,9 +7,11 @@ objective_args:
   both_directions: true
   scan_line_factor: 1.0
   # Eikonal
-  smoothness_factor: 1.0
+  smoothness_factor: 5.0
   smoothness_derivative_type: "FORWARD" #  FORWARD, CENTRAL or UPWIND
   project_derivative: true
+  normal_knn: 7 # Number of neighbours to consider for normal estimation
+  normal_search_radius: 0.0 # Radius for normal estimation. If 0, use knn
   # Odometry
   odometry_factor: 1.0
 
@@ -23,12 +25,14 @@ optimization_args:
   initial_lambda: 1
   tolerance: 1e-3
   lambda_factor: 1
-  visualize: true
   std_out: true
 
 visualization_args:
+  initial_visualization: false
+  visualize: false
+  save_file: true
   show_points: true
-  show_normals: false
+  show_normals: true
   show_path: true
   output_height: 1000
   output_width: 1000
@@ -38,5 +42,5 @@ visualization_args:
 
 general_args:
   from_ground_truth: false
-  initial_value: 3
+  initial_value: 0
   data_path: ../data/simu_76 # relative to build directory

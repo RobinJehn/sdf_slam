@@ -6,12 +6,13 @@
 
 struct GeneralArgs {
   std::filesystem::path data_path;  // Path to the data directory with the scans
-  bool from_ground_truth = false;   // Whether to initialize the map from ground
+  bool from_ground_truth;           // Whether to initialize the map from ground
                                     // truth
-  double initial_value = 0.0;       // Initial value for the map
+  double initial_value;             // Initial value for the map
 };
 
 struct VisualizationArgs {
+  bool save_file;         // Whether to save the output image
   bool show_points;       // Whether to show the points on the map
   bool show_normals;      // Whether to show the normals on the map
   bool show_path;         // Whether to show the path of the scanner
@@ -21,6 +22,8 @@ struct VisualizationArgs {
                           // the specific image
   double min_value;       // Minimum value for the color map
   double max_value;       // Maximum value for the color map
+  bool visualize;         // Whether to visualize the map on each iteration
+  bool initial_visualization;  // Whether to visualize the initial map
 };
 
 template <int Dim>

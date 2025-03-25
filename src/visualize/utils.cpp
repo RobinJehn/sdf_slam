@@ -194,7 +194,9 @@ void display_map(const Eigen::MatrixXd &map,  //
                  const Eigen::Vector2d &max_coords,
                  const pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
                  const pcl::PointCloud<pcl::Normal>::Ptr &normals_global,  //
-                 const VisualizationArgs &vis_args) {
+                 const VisualizationArgs &vis_args, const bool visualize,  //
+                 const bool save_file,                                     //
+                 const std::string &exp_name) {
   const Eigen::Vector2d image_size = Eigen::Vector2d(vis_args.output_width, vis_args.output_height);
   const Eigen::Vector2d map_size = max_coords - min_coords;
   const Eigen::Vector2d scale = image_size.cwiseQuotient(map_size);
@@ -215,6 +217,19 @@ void display_map(const Eigen::MatrixXd &map,  //
     overlay_surface_normals(color_map_image, map_map, tree_global, normals_global, scale);
   }
 
+  if (save_file) {
+    const auto t = std::time(nullptr);
+    const auto tm = *std::localtime(&t);
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y%m%d%H%M%S");
+    const std::string timestamp = oss.str();
+    const std::string file_name = exp_name + "/map_" + timestamp + ".png";
+    cv::imwrite(file_name, color_map_image);
+  }
+
+  if (!visualize) {
+    return;
+  }
   CallbackData data = {map, vis_args.output_width, vis_args.output_height};
   cv::setMouseCallback("Map with Points", onMouse, &data);
   cv::imshow("Map with Points", color_map_image);
@@ -265,7 +280,8 @@ void visualize_map(const Eigen::VectorXd &params,
                    const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                    const MapArgs<2> &map_args,
                    const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                   const VisualizationArgs &vis_args) {
+                   const VisualizationArgs &vis_args, const ObjectiveArgs &objective_args,
+                   const bool visualize, const bool save_file, const std::string &exp_name) {
   State<2> state = unflatten<2>(params, initial_frame, map_args);
 
   std::vector<Eigen::Vector2d> global_points =
@@ -278,7 +294,8 @@ void visualize_map(const Eigen::VectorXd &params,
   // Global normals
   std::vector<pcl::PointCloud<pcl::PointXY>::Ptr> scans_ptr = cloud_to_cloud_ptr(scans);
   const pcl::PointCloud<pcl::Normal>::Ptr normals_global =
-      compute_normals_global_2d(scans_ptr, state.transformations_);
+      compute_normals_global_2d(scans_ptr, state.transformations_,
+                                objective_args.normal_search_radius, objective_args.normal_knn);
 
   // Generate and display the map image
   Eigen::MatrixXd map(map_args.num_points[0], map_args.num_points[1]);
@@ -295,7 +312,7 @@ void visualize_map(const Eigen::VectorXd &params,
   }
 
   display_map(map, state.map_, global_points, path_points, map_args.min_coords, map_args.max_coords,
-              tree_global, normals_global, vis_args);
+              tree_global, normals_global, vis_args, visualize, save_file, exp_name);
 }
 
 // Explicit template instantiation for 2D points
