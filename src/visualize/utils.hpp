@@ -27,13 +27,14 @@ void visualize_map(const Eigen::VectorXd &params,
  *
  * @param map The map to display
  * @param points The points to draw on the map
+ * @param path_points The points to draw the path
  * @param min_coords The minimum coordinates of the map
  * @param max_coords The maximum coordinates of the map
  * @param vis_args Visualization arguments
  */
 void display_map(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> &points,
-                 const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                 const VisualizationArgs &vis_args);
+                 const std::vector<Eigen::Vector2d> &path_points, const Eigen::Vector2d &min_coords,
+                 const Eigen::Vector2d &max_coords, const VisualizationArgs &vis_args);
 
 /**
  * @brief Draw the points on the image
@@ -43,10 +44,12 @@ void display_map(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> 
  * @param min_coords Minimum coordinates of the map
  * @param max_coords Maximum coordinates of the map
  * @param scale Factor to scale the points from global to image frame
+ * @param color The color of the points
+ * @param connect Whether to draw lines between the points
  */
 void overlay_points(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
                     const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                    const Eigen::Vector2d &scale);
+                    const Eigen::Vector2d &scale, const cv::Scalar &color, const bool connect);
 
 /**
  * @brief Turning a map into an image. Applies a color map

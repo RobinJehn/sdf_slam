@@ -103,13 +103,21 @@ cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_he
 
 void overlay_points(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
                     const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                    const Eigen::Vector2d &scale) {
-  for (const auto &point : points) {
-    const Eigen::Vector2d map_point = (point - min_coords).cwiseProduct(scale);
+                    const Eigen::Vector2d &scale, const cv::Scalar &color, const bool connect) {
+  for (size_t i = 0; i < points.size(); ++i) {
+    const Eigen::Vector2d map_point = (points[i] - min_coords).cwiseProduct(scale);
     const int x = static_cast<int>(map_point.x());
     const int y = image.rows - static_cast<int>(map_point.y());
     if (x >= 0 && x < image.cols && y >= 0 && y < image.rows) {
-      cv::circle(image, cv::Point(x, y), 1, cv::Scalar(0, 0, 255), -1);
+      cv::circle(image, cv::Point(x, y), 1, color, -1);
+    }
+    if (i > 0 && connect) {
+      const Eigen::Vector2d prev_map_point = (points[i - 1] - min_coords).cwiseProduct(scale);
+      const int prev_x = static_cast<int>(prev_map_point.x());
+      const int prev_y = image.rows - static_cast<int>(prev_map_point.y());
+      if (prev_x >= 0 && prev_x < image.cols && prev_y >= 0 && prev_y < image.rows) {
+        cv::line(image, cv::Point(prev_x, prev_y), cv::Point(x, y), cv::Scalar(128, 128, 128), 1);
+      }
     }
   }
 }
@@ -181,6 +189,7 @@ void onMouse(int event, int x, int y, int flags, void *userdata) {
 void display_map(const Eigen::MatrixXd &map,  //
                  const Map<2> &map_map,       //
                  const std::vector<Eigen::Vector2d> &points,
+                 const std::vector<Eigen::Vector2d> &path_points,
                  const Eigen::Vector2d &min_coords,  //
                  const Eigen::Vector2d &max_coords,
                  const pcl::search::KdTree<pcl::PointXY>::Ptr &tree_global,
@@ -195,7 +204,12 @@ void display_map(const Eigen::MatrixXd &map,  //
                    vis_args.min_value, vis_args.max_value);
 
   if (vis_args.show_points) {
-    overlay_points(color_map_image, points, min_coords, max_coords, scale);
+    overlay_points(color_map_image, points, min_coords, max_coords, scale, cv::Scalar(0, 0, 255),
+                   false);
+  }
+  if (vis_args.show_path) {
+    overlay_points(color_map_image, path_points, min_coords, max_coords, scale,
+                   cv::Scalar(255, 0, 0), true);
   }
   if (vis_args.show_normals) {
     overlay_surface_normals(color_map_image, map_map, tree_global, normals_global, scale);
@@ -274,8 +288,14 @@ void visualize_map(const Eigen::VectorXd &params,
       map(y, x) = state.map_.get_value_at({x, y});
     }
   }
-  display_map(map, state.map_, global_points, map_args.min_coords, map_args.max_coords, tree_global,
-              normals_global, vis_args);
+
+  std::vector<Eigen::Vector2d> path_points;
+  for (const auto &transformation : state.transformations_) {
+    path_points.push_back(transformation.translation().head<2>());
+  }
+
+  display_map(map, state.map_, global_points, path_points, map_args.min_coords, map_args.max_coords,
+              tree_global, normals_global, vis_args);
 }
 
 // Explicit template instantiation for 2D points

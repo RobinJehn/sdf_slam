@@ -2,19 +2,19 @@ objective_args:
   # Scan points
   scan_point_factor: 1.0
   # Hallucinated points
-  scanline_points: 20
+  scanline_points: 6
   step_size: 0.1
   both_directions: true
   scan_line_factor: 1.0
   # Eikonal
   smoothness_factor: 1.0
   smoothness_derivative_type: "FORWARD" #  FORWARD, CENTRAL or UPWIND
-  project_derivative: false
+  project_derivative: true
   # Odometry
   odometry_factor: 1.0
 
 map_args:
-  num_points: [50, 50]
+  num_points: [100, 100]
   min_coords: [-25, -25]
   max_coords: [25, 25]
 
@@ -28,7 +28,8 @@ optimization_args:
 
 visualization_args:
   show_points: true
-  show_normals: true
+  show_normals: false
+  show_path: true
   output_height: 1000
   output_width: 1000
   clamp_colour_map: true

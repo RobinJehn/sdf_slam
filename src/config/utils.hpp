@@ -14,6 +14,7 @@ struct GeneralArgs {
 struct VisualizationArgs {
   bool show_points;       // Whether to show the points on the map
   bool show_normals;      // Whether to show the normals on the map
+  bool show_path;         // Whether to show the path of the scanner
   int output_width;       // Width of the output image
   int output_height;      // Height of the output image
   bool clamp_colour_map;  // Whether to clamp the colour map or make it relative to min and max in
