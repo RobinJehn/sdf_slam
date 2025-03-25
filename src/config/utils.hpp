@@ -9,6 +9,7 @@ struct GeneralArgs {
   bool from_ground_truth;           // Whether to initialize the map from ground
                                     // truth
   double initial_value;             // Initial value for the map
+  bool save_results;                // Whether to save the results
 };
 
 struct VisualizationArgs {
@@ -24,6 +25,7 @@ struct VisualizationArgs {
   double max_value;       // Maximum value for the color map
   bool visualize;         // Whether to visualize the map on each iteration
   bool initial_visualization;  // Whether to visualize the initial map
+  bool std_out;                // Whether to print to stdout
 };
 
 template <int Dim>

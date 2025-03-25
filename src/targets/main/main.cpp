@@ -51,17 +51,31 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
                       const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
                       const MapArgs<2> &map_args,
                       const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                      const OptimizationArgs &opt_args,   //
-                      const VisualizationArgs &vis_args,  //
-                      const ObjectiveArgs &obj_args,      //
+                      const Args<2> &args,  //
                       const std::string &exp_name) {
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
+
+  OptimizationArgs opt_args = args.optimization_args;
+  VisualizationArgs vis_args = args.vis_args;
+  ObjectiveArgs obj_args = args.objective_args;
+  GeneralArgs gen_args = args.general_args;
   double lambda = opt_args.initial_lambda;
 
   functor(params, residuals);
   double error = residuals.squaredNorm();
   std::cout << "Initial Error: " << error << std::endl;
+
+  if (gen_args.save_results) {
+    // Save the initial parameters to a file
+    std::ofstream params_file(exp_name + "/params_0.txt");
+    if (params_file.is_open()) {
+      params_file << params << std::endl;
+      params_file.close();
+    } else {
+      throw std::runtime_error("Unable to open file to save initial parameters.");
+    }
+  }
 
   for (int iter = 0; iter < opt_args.max_iters; ++iter) {
     // Compute the Jacobian matrix
@@ -103,6 +117,17 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
     auto end_time_jac = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> time_span_jac = end_time_jac - start_time_jac;
 
+    if (gen_args.save_results) {
+      // Save the parameters to a file
+      std::ofstream params_file(exp_name + "/params_" + std::to_string(iter + 1) + ".txt");
+      if (params_file.is_open()) {
+        params_file << params << std::endl;
+        params_file.close();
+      } else {
+        throw std::runtime_error("Unable to open file to save initial parameters.");
+      }
+    }
+
     // Update lambda based on error improvement
     auto start_time_res = std::chrono::high_resolution_clock::now();
     functor(params, residuals);
@@ -115,7 +140,7 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
 
     // Logging
     const double update_norm = delta.norm();
-    if (opt_args.std_out) {
+    if (vis_args.std_out) {
       std::cout << "Iteration: " << iter << ", Error: " << error << ", Update Norm: " << update_norm
                 << ", Jacobian computation time: " << time_span_jac.count()
                 << " ms, Residual computation time: " << time_span_res.count() << " ms"
@@ -192,14 +217,12 @@ int main() {
     ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, point_clouds, odometry,
                                 args.objective_args, scans.frames[0]);
 
-    // Run the optimization process
-    const ObjectiveArgs &obj_args = args.objective_args;
-    std::string exp_name =
-        "experiment_" +
-        std::to_string(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
-
-    std::filesystem::create_directories(exp_name);
     // Save the parameters to a YAML file
+    std::string exp_name =
+        "../experiments/experiment_" +
+        std::to_string(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+    std::filesystem::create_directories(exp_name);
+    const ObjectiveArgs &obj_args = args.objective_args;
     std::ofstream yaml_file(exp_name + "/params.yml");
     yaml_file << "scan_line_factor: " << obj_args.scan_line_factor << "\n";
     yaml_file << "scanline_points: " << obj_args.scanline_points << "\n";
@@ -217,13 +240,13 @@ int main() {
     yaml_file << "lambda_factor: " << args.optimization_args.lambda_factor << "\n";
     yaml_file << "max_iters: " << args.optimization_args.max_iters << "\n";
     yaml_file << "tolerance: " << args.optimization_args.tolerance << "\n";
-    yaml_file << "std_out: " << args.optimization_args.std_out << "\n";
     yaml_file.close();
 
+    // Run the optimization process
     cholmod_common c;
     cholmod_start(&c);
-    run_optimization(functor, params, c, point_clouds, args.map_args, scans.frames[0],
-                     args.optimization_args, args.vis_args, args.objective_args, exp_name);
+    run_optimization(functor, params, c, point_clouds, args.map_args, scans.frames[0], args,
+                     exp_name);
     cholmod_finish(&c);
 
     // Visualize the optimized map

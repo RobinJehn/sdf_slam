@@ -71,7 +71,6 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
       config["optimization_args"]["initial_lambda"].as<double>();
   args.optimization_args.tolerance = config["optimization_args"]["tolerance"].as<double>();
   args.optimization_args.lambda_factor = config["optimization_args"]["lambda_factor"].as<double>();
-  args.optimization_args.std_out = config["optimization_args"]["std_out"].as<bool>();
 
   // Read visualization_args from YAML
   args.vis_args.output_width = config["visualization_args"]["output_width"].as<int>();
@@ -84,10 +83,13 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.vis_args.show_path = config["visualization_args"]["show_path"].as<bool>();
   args.vis_args.save_file = config["visualization_args"]["save_file"].as<bool>();
   args.vis_args.visualize = config["visualization_args"]["visualize"].as<bool>();
-  args.vis_args.initial_visualization = config["visualization_args"]["initial_visualization"].as<bool>();
+  args.vis_args.initial_visualization =
+      config["visualization_args"]["initial_visualization"].as<bool>();
+  args.vis_args.std_out = config["visualization_args"]["std_out"].as<bool>();
 
   // Read general_args from YAML
   args.general_args.from_ground_truth = config["general_args"]["from_ground_truth"].as<bool>();
+  args.general_args.save_results = config["general_args"]["save_results"].as<bool>();
   args.general_args.initial_value = config["general_args"]["initial_value"].as<double>();
   args.general_args.data_path = sfs::path(config["general_args"]["data_path"].as<std::string>());
 

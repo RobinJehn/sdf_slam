@@ -44,7 +44,6 @@ struct OptimizationArgs {
   double lambda_factor;   // Factor by which lambda is multiplied or divided
                           // each iteration
   double tolerance;       // Tolerance for stopping criteria
-  bool std_out;           // Whether to print to stdout
 };
 
 /**

@@ -25,7 +25,6 @@ optimization_args:
   initial_lambda: 1
   tolerance: 1e-3
   lambda_factor: 1
-  std_out: true
 
 visualization_args:
   initial_visualization: false
@@ -39,8 +38,10 @@ visualization_args:
   clamp_colour_map: true
   min_value: -10
   max_value: 10
+  std_out: true
 
 general_args:
   from_ground_truth: false
   initial_value: 0
   data_path: ../data/simu_76 # relative to build directory
+  save_results: true
