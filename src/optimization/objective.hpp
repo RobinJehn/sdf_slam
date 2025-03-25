@@ -37,8 +37,22 @@ struct ObjectiveFunctor : Functor<double> {
   using PointType = typename std::conditional<Dim == 2, pcl::PointXY, pcl::PointXYZ>::type;
   using Vector = std::conditional_t<Dim == 2, Eigen::Vector2d, Eigen::Vector3d>;
 
+  /**
+   * @brief Construct a new Objective Functor object
+   *
+   * @param num_inputs The number of input parameters
+   * @param num_outputs The number of residuals
+   * @param map_args The arguments for the map
+   * @param point_clouds The point clouds
+   * @param odometry The odometry. Relative transformations between point clouds according to the
+   * odometry
+   * @param objective_args The arguments for the objective function
+   * @param initial_frame The initial frame. This frame is not updated, everything else is relative
+   * to this
+   */
   ObjectiveFunctor(const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
                    const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+                   const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> &odometry,
                    const ObjectiveArgs &objective_args,
                    const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame);
 
@@ -74,6 +88,7 @@ struct ObjectiveFunctor : Functor<double> {
 
  private:
   const std::vector<pcl::PointCloud<PointType>> point_clouds_;
+  const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> odometry_;
   const MapArgs<Dim> map_args_;
   const ObjectiveArgs objective_args_;
 

@@ -13,10 +13,12 @@ template <int Dim>
 ObjectiveFunctor<Dim>::ObjectiveFunctor(
     const int num_inputs, const int num_outputs, const MapArgs<Dim> &map_args,
     const std::vector<pcl::PointCloud<PointType>> &point_clouds,
+    const std::vector<Eigen::Transform<double, Dim, Eigen::Affine>> &odometry,
     const ObjectiveArgs &objective_args,
     const Eigen::Transform<double, Dim, Eigen::Affine> &initial_frame)
     : Functor<double>(num_inputs, num_outputs),
       point_clouds_(point_clouds),
+      odometry_(odometry),
       map_args_(map_args),
       objective_args_(objective_args),
       initial_frame_(initial_frame) {}
@@ -25,7 +27,7 @@ template <int Dim>
 int ObjectiveFunctor<Dim>::operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const {
   State<Dim> state = unflatten<Dim>(x, initial_frame_, map_args_);
 
-  fvec = compute_residuals<Dim>(state, point_clouds_, objective_args_);
+  fvec = compute_residuals<Dim>(state, point_clouds_, odometry_, objective_args_);
 
   return 0;
 }
@@ -118,6 +120,30 @@ std::vector<Eigen::Triplet<double>> ObjectiveFunctor<Dim>::compute_jacobian_trip
                              objective_args_.project_derivative);
   } else {
     fill_dRoughness_dMap(triplet_list, derivatives, objective_args_.smoothness_factor);
+  }
+
+  // Odometry residuals
+  if constexpr (Dim == 2) {
+    uint num_smoothing_residuals;
+    switch (objective_args_.smoothness_derivative_type) {
+      case DerivativeType::FORWARD:
+        num_smoothing_residuals =
+            (state.map_.get_num_points(0) - 1) * (state.map_.get_num_points(1) - 1);
+        break;
+      case DerivativeType::CENTRAL:
+        num_smoothing_residuals =
+            (state.map_.get_num_points(0) - 2) * (state.map_.get_num_points(1) - 2);
+        break;
+      case DerivativeType::UPWIND:
+        num_smoothing_residuals = state.map_.total_points();
+        break;
+      default:
+        num_smoothing_residuals = state.map_.total_points();
+    }
+    const int residual_index_offset = point_value.size() + num_smoothing_residuals;
+    fill_dOdometry_dTransforms_2d(state.transformations_, odometry_,
+                                  objective_args_.odometry_factor, triplet_list,
+                                  residual_index_offset, total_map_points);
   }
 
   return triplet_list;

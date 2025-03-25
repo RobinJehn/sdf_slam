@@ -159,23 +159,17 @@ Eigen::VectorXd flatten(const State<Dim> &state) {
     const auto &transform = state.transformations_[i];
     const auto translation = transform.translation();
 
-    Eigen::Matrix<double, Dim, 1> euler_angles;
-    if constexpr (Dim == 3) {
-      euler_angles = transform.rotation().eulerAngles(0, 1, 2);
-    } else if constexpr (Dim == 2) {
-      euler_angles[0] = std::atan2(transform.rotation()(1, 0), transform.rotation()(0, 0));
-    }
-
     for (int j = 0; j < Dim; ++j) {
       flattened(index++) = translation[j];
     }
 
     if constexpr (Dim == 3) {
+      Eigen::Matrix<double, 3, 1> euler_angles = transform.rotation().eulerAngles(0, 1, 2);
       for (int j = 0; j < 3; ++j) {
         flattened(index++) = euler_angles[j];
       }
     } else if constexpr (Dim == 2) {
-      flattened(index++) = euler_angles[0];
+      flattened(index++) = std::atan2(transform.rotation()(1, 0), transform.rotation()(0, 0));
     }
   }
 

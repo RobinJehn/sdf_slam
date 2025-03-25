@@ -97,12 +97,14 @@ std::vector<double> compute_smoothness_residual_2d_upwind(
  *
  * @param state The 2D state for which residuals are to be computed.
  * @param point_clouds A vector of point clouds, where each point cloud contains points in 2D space.
+ * @param odometry A vector of odometry transformations.
  * @param objective_args Additional arguments required for the objective function.
  * @return Eigen::VectorXd A vector containing the computed residuals.
  */
-Eigen::VectorXd compute_residuals_2d(const State<2> &state,
-                                     const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
-                                     const ObjectiveArgs &objective_args);
+Eigen::VectorXd compute_residuals_2d(
+    const State<2> &state, const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &odometry,
+    const ObjectiveArgs &objective_args);
 
 /**
  * @brief Computes the roughness residual in 2D.
@@ -113,3 +115,17 @@ Eigen::VectorXd compute_residuals_2d(const State<2> &state,
  * @return The computed roughness residual as a double.
  */
 double compute_roughness_residual_2d(const std::array<Map<2>, 2> &derivatives);
+
+/**
+ * @brief Computes the odometry residuals in 2D.
+ *
+ * @param transformations A vector of transformations representing the current state.
+ * @param odometry A vector of odometry transformations. Each odometry transformation is in the
+ * local frame. So to get the global transform of frame i, you need to multiply the odometry
+ * transforms from 0 to i.
+ * @param odometry_factor A factor that scales the odometry residuals.
+ */
+std::vector<double> compute_odometry_residual_2d(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &odometry,  //
+    const double odometry_factor);

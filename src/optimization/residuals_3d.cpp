@@ -23,7 +23,8 @@ double compute_roughness_residual_3d(const std::array<Map<3>, 3> &derivatives) {
 }
 
 Eigen::VectorXd compute_residuals_3d(
-    const State<3> &state, const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
+    const State<3> &state,  //
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &point_clouds,
     const ObjectiveArgs &objective_args) {
   const auto &point_value = generate_points_and_desired_values(state, point_clouds, objective_args);
 

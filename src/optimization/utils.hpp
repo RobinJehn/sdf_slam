@@ -24,12 +24,15 @@ struct ObjectiveArgs {
                              // residuals
 
   // Map smoothness
-  double smoothness_factor;  // Factor by which to multiply the smoothness
-                             // term in the objective function
-  // Type of derivative approximation for smoothness term
-  DerivativeType smoothness_derivative_type;
-  bool project_derivative;  // Whether to project the derivative onto the
-                            // normal of the point
+  double smoothness_factor;                   // Factor by which to multiply the smoothness
+                                              // term in the objective function
+  DerivativeType smoothness_derivative_type;  // Type of derivative approximation for smoothness
+                                              // term
+  bool project_derivative;                    // Whether to project the derivative onto the
+                                              // normal of the point
+
+  // Odometry
+  double odometry_factor;  // Factor by which to multiply the odometry residuals
 };
 
 struct OptimizationArgs {

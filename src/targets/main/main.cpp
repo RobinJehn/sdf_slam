@@ -151,13 +151,31 @@ int main() {
       num_points += cloud.size();
     }
 
-    const uint num_smoothing_residuals =
-        args.objective_args.smoothness_derivative_type == DerivativeType::FORWARD
-            ? (map.get_num_points(0) - 1) * (map.get_num_points(1) - 1)
-            : map.total_points();
-    const int num_residuals =
-        num_points * (args.objective_args.scanline_points + 1) + num_smoothing_residuals;
-    ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, point_clouds,
+    uint num_smoothing_residuals;
+    switch (args.objective_args.smoothness_derivative_type) {
+      case DerivativeType::FORWARD:
+        num_smoothing_residuals = (map.get_num_points(0) - 1) * (map.get_num_points(1) - 1);
+        break;
+      case DerivativeType::CENTRAL:
+        num_smoothing_residuals = (map.get_num_points(0) - 2) * (map.get_num_points(1) - 2);
+        break;
+      case DerivativeType::UPWIND:
+        num_smoothing_residuals = map.total_points();
+        break;
+      default:
+        num_smoothing_residuals = map.total_points();
+    }
+
+    std::vector<Eigen::Transform<double, 2, Eigen::Affine>> odometry;
+    for (int i = 0; i < scans.frames.size() - 1; ++i) {
+      odometry.push_back(scans.frames[i].inverse() * scans.frames[i + 1]);
+    }
+    const uint num_odometry_residuals = odometry.size() * 3;  // 3 per odometry reading
+
+    const int num_residuals = num_points * (args.objective_args.scanline_points + 1) +
+                              num_smoothing_residuals + num_odometry_residuals;
+
+    ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, point_clouds, odometry,
                                 args.objective_args, scans.frames[0]);
 
     // Run the optimization process

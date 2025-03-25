@@ -165,7 +165,7 @@ std::vector<double> compute_smoothness_residual_2d_central(
 
   // Prepare a vector to hold one residual per grid point.
   std::vector<double> residuals;
-  const uint residual_size = (map.get_num_points(0) - 1) * (map.get_num_points(1) - 1);
+  const uint residual_size = (map.get_num_points(0) - 2) * (map.get_num_points(1) - 2);
   residuals.resize(residual_size, 0.0);
 
   // Loop over each grid point.
@@ -207,26 +207,76 @@ std::vector<double> compute_smoothness_residual_2d_central(
       const double point_residual = grad_magnitude - 1.0;
 
       // Scale the residual by the smoothness factor.
-      residuals[i * (num_y - 1) + j] = smoothness_factor * point_residual;
+      residuals[(i - 1) * (num_y - 2) + (j - 1)] = smoothness_factor * point_residual;
     }
   }
 
   return residuals;
 }
 
-Eigen::VectorXd compute_residuals_2d(const State<2> &state,
-                                     const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
-                                     const ObjectiveArgs &objective_args) {
+std::vector<double> compute_odometry_residual_2d(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &odometry,  //
+    const double odometry_factor) {
+  std::vector<double> odometry_residuals;
+
+  assert(odometry.size() == transformations.size() - 1 &&
+         "Odometry size must be equal to relative transforms size.");
+
+  // Calculate the relative transformations between each pair of poses.
+  std::vector<Eigen::Transform<double, 2, Eigen::Affine>> relative_transforms;
+  for (int i = 0; i < transformations.size() - 1; ++i) {
+    // Transform from pose i to pose i+1.
+    const Eigen::Transform<double, 2, Eigen::Affine> relative_transform =
+        transformations[i].inverse() * transformations[i + 1];
+    relative_transforms.push_back(relative_transform);
+  }
+
+  for (int i = 0; i < relative_transforms.size(); ++i) {
+    const Eigen::Transform<double, 2, Eigen::Affine> error =
+        odometry[i].inverse() * relative_transforms[i];
+    const double error_tx = error.translation().x();
+    const double error_ty = error.translation().y();
+    const double error_theta =
+        std::atan2(error.rotation().matrix()(1, 0), error.rotation().matrix()(0, 0));
+
+    odometry_residuals.push_back(odometry_factor * error_tx);
+    odometry_residuals.push_back(odometry_factor * error_ty);
+    odometry_residuals.push_back(odometry_factor * error_theta);
+  }
+
+  return odometry_residuals;
+}
+
+Eigen::VectorXd compute_residuals_2d(
+    const State<2> &state,  //
+    const std::vector<pcl::PointCloud<pcl::PointXY>> &point_clouds,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &odometry,
+    const ObjectiveArgs &objective_args) {
   // Scan and line residuals
   const auto &point_value = generate_points_and_desired_values(state, point_clouds, objective_args);
 
   Eigen::VectorXd residuals;
-  const uint smoothness_residuals =
-      objective_args.smoothness_derivative_type == DerivativeType::FORWARD
-          ? (state.map_.get_num_points(0) - 1) * (state.map_.get_num_points(1) - 1)
-          : state.map_.total_points();
+  uint smoothness_residuals;
+  switch (objective_args.smoothness_derivative_type) {
+    case DerivativeType::FORWARD:
+      smoothness_residuals =
+          (state.map_.get_num_points(0) - 1) * (state.map_.get_num_points(1) - 1);
+      break;
+    case DerivativeType::CENTRAL:
+      smoothness_residuals =
+          (state.map_.get_num_points(0) - 2) * (state.map_.get_num_points(1) - 2);
+      break;
+    case DerivativeType::UPWIND:
+      smoothness_residuals = state.map_.total_points();
+      break;
+    default:
+      smoothness_residuals = state.map_.total_points();
+  }
 
-  residuals.resize(point_value.size() + smoothness_residuals);
+  uint num_odometry_residuals = odometry.size() * 3;  // 3 per odometry reading
+
+  residuals.resize(point_value.size() + smoothness_residuals + num_odometry_residuals);
   for (int i = 0; i < point_value.size(); ++i) {
     const auto &[point, desired_value] = point_value[i];
 
@@ -258,6 +308,13 @@ Eigen::VectorXd compute_residuals_2d(const State<2> &state,
 
   for (int i = 0; i < smoothing_residuals.size(); ++i) {
     residuals(point_value.size() + i) = smoothing_residuals[i];
+  }
+
+  // Odometry residuals
+  std::vector<double> odometry_residuals = compute_odometry_residual_2d(
+      state.transformations_, odometry, objective_args.odometry_factor);
+  for (int i = 0; i < odometry_residuals.size(); ++i) {
+    residuals(point_value.size() + smoothing_residuals.size() + i) = odometry_residuals[i];
   }
 
   return residuals;

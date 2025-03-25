@@ -28,6 +28,8 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.objective_args.project_derivative =
       config["objective_args"]["project_derivative"].as<bool>();
 
+  args.objective_args.odometry_factor = config["objective_args"]["odometry_factor"].as<double>();
+
   const std::string smoothness_derivative_type =
       config["objective_args"]["smoothness_derivative_type"].as<std::string>();
   if (smoothness_derivative_type == "UPWIND") {

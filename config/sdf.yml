@@ -1,17 +1,22 @@
 objective_args:
+  # Scan points
+  scan_point_factor: 1.0
+  # Hallucinated points
   scanline_points: 20
   step_size: 0.1
   both_directions: true
   scan_line_factor: 1.0
-  scan_point_factor: 1.0
+  # Eikonal
   smoothness_factor: 1.0
-  smoothness_derivative_type: "FORWARD" #  FORWARD or UPWIND
-  project_derivative: true
+  smoothness_derivative_type: "FORWARD" #  FORWARD, CENTRAL or UPWIND
+  project_derivative: false
+  # Odometry
+  odometry_factor: 1.0
 
 map_args:
-  num_points: [40, 40]
-  min_coords: [-3, -7]
-  max_coords: [4, 4]
+  num_points: [50, 50]
+  min_coords: [-25, -25]
+  max_coords: [25, 25]
 
 optimization_args:
   max_iters: 5000
@@ -27,10 +32,10 @@ visualization_args:
   output_height: 1000
   output_width: 1000
   clamp_colour_map: true
-  min_value: -5
-  max_value: 5
+  min_value: -10
+  max_value: 10
 
 general_args:
   from_ground_truth: false
   initial_value: 3
-  data_path: ../data/scans # relative to build directory
+  data_path: ../data/simu_76 # relative to build directory

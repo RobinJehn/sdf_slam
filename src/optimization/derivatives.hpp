@@ -76,3 +76,21 @@ void fill_dSmoothness_dMap_2d(const Map<2> &map, const double smoothness_factor,
                               std::vector<Eigen::Triplet<double>> &triplet_list,
                               const int residual_index_offset, const DerivativeType type,
                               const bool project_derivative);
+
+/**
+ * @brief Computes the odometry derivative with respect to the transformation.
+ *
+ * @param transformations The transformations to compute the derivative for.
+ * @param odometry The odometry transformations.
+ * @param odometry_factor The factor that influences the odometry term.
+ * @param triplet_list A reference to a vector of Eigen triplets where the results will be stored.
+ * @param residual_index_offset An offset for the residual index to correctly place the results in
+ * the triplet list.
+ * @param param_index_offset An offset for the parameter index to correctly place the results in
+ * the triplet list.
+ */
+void fill_dOdometry_dTransforms_2d(
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &transformations,
+    const std::vector<Eigen::Transform<double, 2, Eigen::Affine>> &odometry,
+    const double odometry_factor, std::vector<Eigen::Triplet<double>> &triplet_list,
+    const int residual_index_offset, const int param_index_offset);
