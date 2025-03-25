@@ -65,6 +65,7 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
 
   for (int iter = 0; iter < opt_args.max_iters; ++iter) {
     // Compute the Jacobian matrix
+    auto start_time_jac = std::chrono::high_resolution_clock::now();
     functor.sparse_df(params, jacobian_sparse);
     if (jacobian_sparse.nonZeros() == 0) {
       throw std::runtime_error("Jacobian has no non-zero entries.");
@@ -99,17 +100,25 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
     Eigen::VectorXd delta(jt_residuals.size());
     std::memcpy(delta.data(), cholmod_result->x, jt_residuals.size() * sizeof(double));
     params += delta;
+    auto end_time_jac = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> time_span_jac = end_time_jac - start_time_jac;
 
     // Update lambda based on error improvement
+    auto start_time_res = std::chrono::high_resolution_clock::now();
     functor(params, residuals);
     double new_error = residuals.squaredNorm();
+    auto end_time_res = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> time_span_res = end_time_res - start_time_res;
+
     lambda = new_error < error ? lambda / opt_args.lambda_factor : lambda * opt_args.lambda_factor;
     error = new_error;
 
     // Logging
     const double update_norm = delta.norm();
     if (opt_args.std_out) {
-      std::cout << "Iteration: " << iter << " Error: " << error << " Update Norm: " << update_norm
+      std::cout << "Iteration: " << iter << ", Error: " << error << ", Update Norm: " << update_norm
+                << ", Jacobian computation time: " << time_span_jac.count()
+                << " ms, Residual computation time: " << time_span_res.count() << " ms"
                 << std::endl;
     }
     if (vis_args.visualize || vis_args.save_file) {
