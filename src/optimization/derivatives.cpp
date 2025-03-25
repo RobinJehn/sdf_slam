@@ -471,11 +471,11 @@ void fill_dOdometry_dTransforms_2d(
                             /** value */ odometry_factor * dError(1, 5)});
 
     // Derivative of the theta residual with respect to the transformation parameters.
-    triplet_list.push_back({residual_index_offset + i * 3 + 2,                // r_theta
-                            /** parameter */ param_index_offset + i * 3 + 2,  // theta_i
-                            /** value */ -odometry_factor});
     triplet_list.push_back({residual_index_offset + i * 3 + 2,                      // r_theta
-                            /** parameter */ param_index_offset + (i + 1) * 3 + 2,  // theta_i+1
+                            /** parameter */ param_index_offset + (i - 1) * 3 + 2,  // theta_i
+                            /** value */ -odometry_factor});
+    triplet_list.push_back({residual_index_offset + i * 3 + 2,                // r_theta
+                            /** parameter */ param_index_offset + i * 3 + 2,  // theta_i+1
                             /** value */ odometry_factor});
   }
 }
