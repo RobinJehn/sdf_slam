@@ -10,6 +10,7 @@ struct GeneralArgs {
                                     // truth
   double initial_value;             // Initial value for the map
   bool save_results;                // Whether to save the results
+  std::string experiment_name;      // Name of the experiment
 };
 
 struct VisualizationArgs {

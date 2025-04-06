@@ -46,13 +46,14 @@ void eigen_to_cholmod(const Eigen::SparseMatrix<double> &eigenMatrix,
 }
 
 // Runs the optimization process
-void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
-                      cholmod_common &c,                                      //
-                      const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
-                      const MapArgs<2> &map_args,
-                      const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
-                      const Args<2> &args,  //
-                      const std::string &exp_name) {
+int run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
+                     cholmod_common &c,                                      //
+                     const std::vector<pcl::PointCloud<pcl::PointXY>> &scans,
+                     const MapArgs<2> &map_args,
+                     const Eigen::Transform<double, 2, Eigen::Affine> &initial_frame,
+                     const Args<2> &args,          //
+                     const std::string &exp_name,  //
+                     int total_iter) {
   Eigen::SparseMatrix<double> jacobian_sparse;
   Eigen::VectorXd residuals(functor.values());
 
@@ -66,7 +67,7 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
   double error = residuals.squaredNorm();
   std::cout << "Initial Error: " << error << std::endl;
 
-  if (gen_args.save_results) {
+  if (gen_args.save_results && total_iter == 0) {
     // Save the initial parameters to a file
     std::ofstream params_file(exp_name + "/params_0.txt");
     if (params_file.is_open()) {
@@ -84,8 +85,6 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
     if (jacobian_sparse.nonZeros() == 0) {
       throw std::runtime_error("Jacobian has no non-zero entries.");
     }
-    std::cout << "Jacobian non-zeros: " << jacobian_sparse.nonZeros()
-              << " Jacobian size: " << residuals.size() << " x " << params.size() << std::endl;
 
     // RHS of the linear system
     Eigen::VectorXd jt_residuals = -jacobian_sparse.transpose() * residuals;
@@ -133,7 +132,7 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
 
     if (gen_args.save_results) {
       // Save the parameters to a file
-      std::ofstream params_file(exp_name + "/params_" + std::to_string(iter + 1) + ".txt");
+      std::ofstream params_file(exp_name + "/params_" + std::to_string(++total_iter) + ".txt");
       if (params_file.is_open()) {
         params_file << params << std::endl;
         params_file.close();
@@ -173,6 +172,8 @@ void run_optimization(ObjectiveFunctor<2> &functor, Eigen::VectorXd &params,  //
     // Early stopping
     if (update_norm < opt_args.tolerance) break;
   }
+
+  return total_iter;
 }
 
 int main() {
@@ -182,27 +183,14 @@ int main() {
     Scans scans = read_scans(args.general_args.data_path);
     const std::vector<pcl::PointCloud<pcl::PointXY>> point_clouds = scans.scans;
 
+    std::vector<Eigen::Transform<double, 2, Eigen::Affine>> odometry;
+    for (int i = 0; i < scans.frames.size() - 1; ++i) {
+      odometry.push_back(scans.frames[i].inverse() * scans.frames[i + 1]);
+    }
+
     // Initialize the map and set up the optimization parameters
     Map<2> map(args.map_args);
-    if (args.general_args.from_ground_truth) {
-      const std::filesystem::path scene_path = args.general_args.data_path / "scene_info.txt";
-      const Scene scene = Scene::from_file(scene_path);
-      map.from_ground_truth(scene);
-    } else {
-      map.set_value(args.general_args.initial_value);
-    }
-    Eigen::VectorXd params = flatten<2>(State<2>(map, scans.frames));
-
-    // Visualize the initial map
-    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args,
-                  args.objective_args, args.vis_args.initial_visualization,
-                  /* save_file */ false);
-
-    // Set up the objective functor for optimization
-    int num_points = 0;
-    for (const auto &cloud : point_clouds) {
-      num_points += cloud.size();
-    }
+    map.set_value(args.general_args.initial_value);
 
     uint num_smoothing_residuals;
     switch (args.objective_args.smoothness_derivative_type) {
@@ -218,20 +206,6 @@ int main() {
       default:
         num_smoothing_residuals = map.total_points();
     }
-
-    std::vector<Eigen::Transform<double, 2, Eigen::Affine>> odometry;
-    for (int i = 0; i < scans.frames.size() - 1; ++i) {
-      odometry.push_back(scans.frames[i].inverse() * scans.frames[i + 1]);
-    }
-    const uint num_odometry_residuals = odometry.size() * 3;  // 3 per odometry reading
-
-    std::cout << "Num points: " << num_points << std::endl;
-
-    const int num_residuals = num_points * (args.objective_args.scanline_points + 1) +
-                              num_smoothing_residuals + num_odometry_residuals;
-
-    ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, point_clouds, odometry,
-                                args.objective_args, scans.frames[0]);
 
     // Save the parameters to a YAML file
     std::string folder_name =
@@ -267,17 +241,72 @@ int main() {
     yaml_file << "data_path: " << args.general_args.data_path << "\n";
     yaml_file.close();
 
-    // Run the optimization process
-    cholmod_common c;
-    cholmod_start(&c);
-    run_optimization(functor, params, c, point_clouds, args.map_args, scans.frames[0], args,
-                     exp_name);
-    cholmod_finish(&c);
+    Eigen::VectorXd old_params;
+    int total_iter = 0;
+    for (int i = 1; i < scans.frames.size(); ++i) {
+      std::vector<Eigen::Transform<double, 2, Eigen::Affine>> sub_frames;
 
-    // Visualize the optimized map
-    visualize_map(params, point_clouds, args.map_args, scans.frames[0], args.vis_args,
-                  args.objective_args, args.vis_args.initial_visualization, /* save_file */ true,
-                  exp_name);
+      // Add the last frame from sub_frames with odometry to sub_frames
+      if (i > 1) {
+        State<2> state = unflatten<2>(old_params, scans.frames[0], args.map_args);
+        sub_frames = state.transformations_;
+        Eigen::Transform<double, 2, Eigen::Affine> new_frame = sub_frames.back() * odometry[i - 1];
+        sub_frames.push_back(new_frame);
+      } else {
+        sub_frames.push_back(scans.frames[0]);
+        sub_frames.push_back(scans.frames[1]);
+      }
+
+      std::vector<pcl::PointCloud<pcl::PointXY>> sub_point_clouds;
+      for (auto it = point_clouds.begin(); it != point_clouds.begin() + i + 1; ++it) {
+        sub_point_clouds.push_back(pcl::PointCloud<pcl::PointXY>(*it));
+      }
+      std::vector<Eigen::Transform<double, 2, Eigen::Affine>> sub_odometry;
+      for (auto it = odometry.begin(); it != odometry.begin() + i; ++it) {
+        sub_odometry.push_back(Eigen::Transform<double, 2, Eigen::Affine>(*it));
+      }
+      std::cout << "length: " << sub_odometry.size() << std::endl;
+
+      Eigen::VectorXd params = flatten<2>(State<2>(map, sub_frames));
+      if (i > 1) {
+        // Copy over the old params
+        for (int j = 0; j < old_params.size(); ++j) {
+          params[j] = old_params[j];
+        }
+      }
+
+      // Visualize the initial map
+      visualize_map(params, sub_point_clouds, args.map_args, sub_frames[0], args.vis_args,
+                    args.objective_args, args.vis_args.initial_visualization,
+                    /* save_file */ false);
+
+      // Set up the objective functor for optimization
+      int num_points = 0;
+      for (const auto &cloud : sub_point_clouds) {
+        num_points += cloud.size();
+      }
+
+      const uint num_odometry_residuals = sub_odometry.size() * 3;  // 3 per odometry reading
+
+      const int num_residuals = num_points * (args.objective_args.scanline_points + 1) +
+                                num_smoothing_residuals + num_odometry_residuals;
+
+      ObjectiveFunctor<2> functor(params.size(), num_residuals, args.map_args, sub_point_clouds,
+                                  sub_odometry, args.objective_args, scans.frames[0]);
+
+      // Run the optimization process
+      cholmod_common c;
+      cholmod_start(&c);
+      total_iter = run_optimization(functor, params, c, sub_point_clouds, args.map_args,
+                                    scans.frames[0], args, exp_name, total_iter);
+      cholmod_finish(&c);
+
+      old_params = params;
+      // Visualize the optimized map
+      visualize_map(params, sub_point_clouds, args.map_args, scans.frames[0], args.vis_args,
+                    args.objective_args, args.vis_args.initial_visualization, /* save_file */ true,
+                    exp_name);
+    }
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;

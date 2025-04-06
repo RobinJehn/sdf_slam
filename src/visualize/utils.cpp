@@ -97,27 +97,36 @@ cv::Mat map_to_image(const Eigen::MatrixXd &map, int output_width, int output_he
 
   // Apply color mapping
   cv::Mat color_map_image;
-  cv::applyColorMap(map_image, color_map_image, cv::COLORMAP_JET);
+  cv::applyColorMap(map_image, color_map_image, cv::COLORMAP_PLASMA);
   return color_map_image;
 }
 
 void overlay_points(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
                     const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                    const Eigen::Vector2d &scale, const cv::Scalar &color, const bool connect) {
+                    const Eigen::Vector2d &scale, const cv::Scalar &color, const bool connect,
+                    const int size) {
+  // Draw the line first so the points are on top
+  if (connect) {
+    for (size_t i = 1; i < points.size(); ++i) {
+      const Eigen::Vector2d map_point = (points[i] - min_coords).cwiseProduct(scale);
+      const int x = static_cast<int>(map_point.x());
+      const int y = image.rows - static_cast<int>(map_point.y());
+      const Eigen::Vector2d prev_map_point = (points[i - 1] - min_coords).cwiseProduct(scale);
+      const int prev_x = static_cast<int>(prev_map_point.x());
+      const int prev_y = image.rows - static_cast<int>(prev_map_point.y());
+      if (prev_x >= 0 && prev_x < image.cols && prev_y >= 0 && prev_y < image.rows) {
+        cv::line(image, cv::Point(prev_x, prev_y), cv::Point(x, y), cv::Scalar(128, 128, 128),
+                 size);
+      }
+    }
+  }
+
   for (size_t i = 0; i < points.size(); ++i) {
     const Eigen::Vector2d map_point = (points[i] - min_coords).cwiseProduct(scale);
     const int x = static_cast<int>(map_point.x());
     const int y = image.rows - static_cast<int>(map_point.y());
     if (x >= 0 && x < image.cols && y >= 0 && y < image.rows) {
-      cv::circle(image, cv::Point(x, y), 1, color, -1);
-    }
-    if (i > 0 && connect) {
-      const Eigen::Vector2d prev_map_point = (points[i - 1] - min_coords).cwiseProduct(scale);
-      const int prev_x = static_cast<int>(prev_map_point.x());
-      const int prev_y = image.rows - static_cast<int>(prev_map_point.y());
-      if (prev_x >= 0 && prev_x < image.cols && prev_y >= 0 && prev_y < image.rows) {
-        cv::line(image, cv::Point(prev_x, prev_y), cv::Point(x, y), cv::Scalar(128, 128, 128), 1);
-      }
+      cv::circle(image, cv::Point(x, y), size, color, -1);
     }
   }
 }
@@ -149,12 +158,12 @@ void overlay_surface_normals(cv::Mat &image, const Map<2> &map,
       const int x = static_cast<int>(map_point.x());
       const int y = image.rows - static_cast<int>(map_point.y());
 
-      const Eigen::Vector2d normal_end = grid_pt + 0.1 * Eigen::Vector2d(n.normal_x, n.normal_y);
+      const Eigen::Vector2d normal_end = grid_pt + 0.2 * Eigen::Vector2d(n.normal_x, n.normal_y);
       const Eigen::Vector2d map_normal_end =
           (normal_end - map.get_min_coords()).cwiseProduct(scale);
       const int x_end = static_cast<int>(map_normal_end.x());
       const int y_end = image.rows - static_cast<int>(map_normal_end.y());
-      cv::line(image, cv::Point(x, y), cv::Point(x_end, y_end), cv::Scalar(0, 255, 0), 1);
+      cv::line(image, cv::Point(x, y), cv::Point(x_end, y_end), cv::Scalar(0, 100, 0), 1);
     }
   }
 }
@@ -206,12 +215,12 @@ void display_map(const Eigen::MatrixXd &map,  //
                    vis_args.min_value, vis_args.max_value);
 
   if (vis_args.show_points) {
-    overlay_points(color_map_image, points, min_coords, max_coords, scale, cv::Scalar(0, 0, 255),
-                   false);
+    overlay_points(color_map_image, points, min_coords, max_coords, scale, cv::Scalar(0, 0, 0),
+                   false, 1);
   }
   if (vis_args.show_path) {
     overlay_points(color_map_image, path_points, min_coords, max_coords, scale,
-                   cv::Scalar(255, 0, 0), true);
+                   cv::Scalar(255, 0, 0), true, 2);
   }
   if (vis_args.show_normals) {
     overlay_surface_normals(color_map_image, map_map, tree_global, normals_global, scale);

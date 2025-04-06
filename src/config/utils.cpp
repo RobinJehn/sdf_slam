@@ -92,6 +92,7 @@ Args<Dim> setup_from_yaml(const sfs::path &config_path) {
   args.general_args.save_results = config["general_args"]["save_results"].as<bool>();
   args.general_args.initial_value = config["general_args"]["initial_value"].as<double>();
   args.general_args.data_path = sfs::path(config["general_args"]["data_path"].as<std::string>());
+  args.general_args.experiment_name = config["general_args"]["experiment_name"].as<std::string>();
 
   if (args.objective_args.both_directions && args.objective_args.scanline_points % 2 != 0) {
     throw std::runtime_error("scanline_points must be even when both_directions is true.");

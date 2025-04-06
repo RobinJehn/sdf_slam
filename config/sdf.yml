@@ -7,7 +7,7 @@ objective_args:
   both_directions: true
   scan_line_factor: 1.0
   # Eikonal
-  smoothness_factor: 5.0
+  smoothness_factor: 0.2
   smoothness_derivative_type: "FORWARD" #  FORWARD, CENTRAL or UPWIND
   project_derivative: true
   normal_knn: 7 # Number of neighbours to consider for normal estimation
@@ -17,21 +17,20 @@ objective_args:
 
 map_args:
   num_points: [100, 100]
-  min_coords: [-25, -25]
-  max_coords: [25, 25]
-
+  min_coords: [-13, -25]
+  max_coords: [27, 10]
 optimization_args:
-  max_iters: 5000
-  initial_lambda: 1
+  max_iters: 10
+  initial_lambda: 5
   tolerance: 1e-3
-  lambda_factor: 1
+  lambda_factor: 0.9
 
 visualization_args:
   initial_visualization: false
   visualize: false
   save_file: true
   show_points: true
-  show_normals: true
+  show_normals: false
   show_path: true
   output_height: 1000
   output_width: 1000
@@ -43,5 +42,6 @@ visualization_args:
 general_args:
   from_ground_truth: false
   initial_value: 0
-  data_path: ../data/simu_76 # relative to build directory
+  data_path: ../data/intel/ # relative to build directory
   save_results: true
+  experiment_name: "intel_inc_10"

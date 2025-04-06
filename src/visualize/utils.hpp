@@ -51,10 +51,11 @@ void display_map(const Eigen::MatrixXd &map, const std::vector<Eigen::Vector2d> 
  * @param scale Factor to scale the points from global to image frame
  * @param color The color of the points
  * @param connect Whether to draw lines between the points
+ * @param size The size of the points/lines
  */
 void overlay_points(cv::Mat &image, const std::vector<Eigen::Vector2d> &points,
                     const Eigen::Vector2d &min_coords, const Eigen::Vector2d &max_coords,
-                    const Eigen::Vector2d &scale, const cv::Scalar &color, const bool connect);
+                    const Eigen::Vector2d &scale, const cv::Scalar &color, const bool connect, const int size);
 
 /**
  * @brief Turning a map into an image. Applies a color map
